@@ -2,6 +2,10 @@ package simpledb;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+// import jdk.internal.util.xml.impl.Pair;
 
 /**
  * TupleDesc describes the schema of a tuple.
@@ -10,11 +14,16 @@ public class TupleDesc implements Serializable {
 
     /**
      * A help class to facilitate organizing the information of each field
+     * TDItem: TupleDesc Item
      * */
     public static class TDItem implements Serializable {
 
         private static final long serialVersionUID = 1L;
-
+        
+        /**
+         * The buffer of the hash code
+         */
+        private int hashCodeBuffer = -1;
         /**
          * The type of the field
          * */
@@ -28,12 +37,40 @@ public class TupleDesc implements Serializable {
         public TDItem(Type t, String n) {
             this.fieldName = n;
             this.fieldType = t;
+            // fieldType.equals(t);
         }
 
+        @Override
         public String toString() {
             return fieldName + "(" + fieldType + ")";
         }
+
+        @Override
+        public boolean equals(Object o){
+            if (this == o) return true;
+            if (o==null || o.getClass()!= this.getClass()) return false;
+            TDItem other = (TDItem)o;
+            return (fieldName.equals(other.fieldName))&&(fieldType.equals(other.fieldType));
+        }
+        
+        @Override
+        public int hashCode(){
+            if (hashCodeBuffer!=-1) return hashCodeBuffer;
+            Vector<Integer> has = new Vector<>();
+            has.add(fieldName.hashCode());
+            has.add(fieldType.hashCode());
+            hashCodeBuffer = has.hashCode();
+            return hashCodeBuffer;
+        }
+
     }
+    /**
+     * Variables
+     */
+    private static final long serialVersionUID = 1L;
+    private Vector<TDItem> tupleDescItems;
+    private int GetSize = 0;
+    private ConcurrentHashMap<String,Integer> FieldNameToIndexMap;
 
     /**
      * @return
@@ -42,10 +79,29 @@ public class TupleDesc implements Serializable {
      * */
     public Iterator<TDItem> iterator() {
         // some code goes here
-        return null;
+        return tupleDescItems.iterator();
     }
 
-    private static final long serialVersionUID = 1L;
+    
+
+
+    /**
+     * Update the FieldNameToIndexMap
+     * 
+     */
+    public boolean updateInfo(){
+        int gsize = 0;
+        FieldNameToIndexMap = new ConcurrentHashMap<>();
+        for (int i=0;i<tupleDescItems.size();++i){
+            if (tupleDescItems.get(i).fieldName!=null && 
+                !FieldNameToIndexMap.containsKey(tupleDescItems.get(i).fieldName))
+            FieldNameToIndexMap.put(tupleDescItems.get(i).fieldName, i);
+            gsize += tupleDescItems.get(i).fieldType.getLen();
+        }
+        GetSize = gsize;
+        return true;
+    }
+
 
     /**
      * Create a new TupleDesc with typeAr.length fields with fields of the
@@ -60,6 +116,11 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
         // some code goes here
+        tupleDescItems = new Vector<>();
+        for (int i=0;i<typeAr.length;++i){
+            tupleDescItems.add(new TDItem(typeAr[i],fieldAr[i]));
+        }
+        updateInfo();
     }
 
     /**
@@ -72,14 +133,29 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr) {
         // some code goes here
+        tupleDescItems = new Vector<>();
+        for (int i=0;i<typeAr.length;++i){
+            tupleDescItems.add(new TDItem(typeAr[i],""));
+        }
+        updateInfo();
     }
+
+    /**
+     * Empty Constructor. Nothing here. 
+     */
+    public TupleDesc() {
+        // some code goes here
+        tupleDescItems = new Vector<>();
+        updateInfo();
+    }
+
 
     /**
      * @return the number of fields in this TupleDesc
      */
     public int numFields() {
         // some code goes here
-        return 0;
+        return tupleDescItems.size();
     }
 
     /**
@@ -93,7 +169,9 @@ public class TupleDesc implements Serializable {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if (i<0 || i >= numFields()) 
+            throw new NoSuchElementException("index="+i+";size="+numFields());
+        return tupleDescItems.get(i).fieldName;
     }
 
     /**
@@ -108,7 +186,9 @@ public class TupleDesc implements Serializable {
      */
     public Type getFieldType(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if (i<0 || i >= numFields()) 
+            throw new NoSuchElementException("index="+i+";size="+numFields());
+        return tupleDescItems.get(i).fieldType;
     }
 
     /**
@@ -122,7 +202,11 @@ public class TupleDesc implements Serializable {
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if (FieldNameToIndexMap==null) FieldNameToIndexMap = new ConcurrentHashMap<>();
+        if (name==null){ throw new NoSuchElementException(); }
+        Integer ans = FieldNameToIndexMap.get(name);
+        if (ans==null){ throw new NoSuchElementException(); }
+        return ans;
     }
 
     /**
@@ -131,7 +215,8 @@ public class TupleDesc implements Serializable {
      */
     public int getSize() {
         // some code goes here
-        return 0;
+        if (GetSize==0) updateInfo();
+        return GetSize;
     }
 
     /**
@@ -146,7 +231,11 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
-        return null;
+        TupleDesc ans = new TupleDesc();
+        ans.tupleDescItems.addAll(td1.tupleDescItems);
+        ans.tupleDescItems.addAll(td2.tupleDescItems);
+        ans.updateInfo();
+        return ans;
     }
 
     /**
@@ -160,13 +249,17 @@ public class TupleDesc implements Serializable {
      */
     public boolean equals(Object o) {
         // some code goes here
-        return false;
+        if (this == o) return true;
+        if (o==null || o.getClass()!= this.getClass()) return false;
+        TupleDesc other = (TupleDesc)o;
+        return this.tupleDescItems.equals(other.tupleDescItems);
     }
 
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
-        throw new UnsupportedOperationException("unimplemented");
+        return this.tupleDescItems.hashCode();
+        // throw new UnsupportedOperationException("unimplemented");
     }
 
     /**
@@ -175,9 +268,12 @@ public class TupleDesc implements Serializable {
      * the exact format does not matter.
      * 
      * @return String describing this descriptor.
+     * 
+     * Jiasen Note: I use the Vector toString Function
      */
     public String toString() {
-        // some code goes here
-        return "";
+        // some code goes heres
+        return tupleDescItems.toString();
+        // return "";
     }
 }

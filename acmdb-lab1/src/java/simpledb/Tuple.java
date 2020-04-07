@@ -1,8 +1,9 @@
 package simpledb;
 
 import java.io.Serializable;
-import java.util.Arrays;
+// import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Vector;
 
 /**
  * Tuple maintains information about the contents of a tuple. Tuples have a
@@ -11,7 +12,19 @@ import java.util.Iterator;
  */
 public class Tuple implements Serializable {
 
+    /**
+     * Variables
+     */
     private static final long serialVersionUID = 1L;
+    private TupleDesc schema = null;
+    private RecordId recordId = null;
+    private Vector<Field> tuple_record = null;
+    
+    private void tuple_record_push_n_times(int n){
+        for (int i=0;i<n;++i){
+            tuple_record.add(null);
+        }
+    }
 
     /**
      * Create a new tuple with the specified schema (type).
@@ -22,6 +35,10 @@ public class Tuple implements Serializable {
      */
     public Tuple(TupleDesc td) {
         // some code goes here
+        tuple_record = new Vector<>();
+        tuple_record_push_n_times(td.numFields());
+        schema = td;
+        // assert record.get(0)==null;
     }
 
     /**
@@ -29,7 +46,7 @@ public class Tuple implements Serializable {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return schema;
     }
 
     /**
@@ -38,7 +55,7 @@ public class Tuple implements Serializable {
      */
     public RecordId getRecordId() {
         // some code goes here
-        return null;
+        return recordId;
     }
 
     /**
@@ -49,6 +66,7 @@ public class Tuple implements Serializable {
      */
     public void setRecordId(RecordId rid) {
         // some code goes here
+        recordId = rid;
     }
 
     /**
@@ -61,6 +79,7 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
+        tuple_record.set(i, f);
     }
 
     /**
@@ -71,7 +90,7 @@ public class Tuple implements Serializable {
      */
     public Field getField(int i) {
         // some code goes here
-        return null;
+        return tuple_record.get(i);
     }
 
     /**
@@ -84,7 +103,8 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-        throw new UnsupportedOperationException("Implement this");
+        return tuple_record.toString();
+        // throw new UnsupportedOperationException("Implement this");
     }
 
     /**
@@ -94,7 +114,7 @@ public class Tuple implements Serializable {
     public Iterator<Field> fields()
     {
         // some code goes here
-        return null;
+        return tuple_record.iterator();
     }
 
     /**
@@ -103,5 +123,9 @@ public class Tuple implements Serializable {
     public void resetTupleDesc(TupleDesc td)
     {
         // some code goes here
+        tuple_record = new Vector<>();
+        tuple_record_push_n_times(td.numFields());
+        recordId = null;
+        schema = td;
     }
 }

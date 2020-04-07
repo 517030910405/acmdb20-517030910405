@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * The Catalog keeps track of all available tables in the database and their
@@ -17,13 +18,24 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
-
+    private int TableCount = 0;
+    private ConcurrentHashMap<Integer, DbFile> FileList = null;
+    private ConcurrentHashMap<Integer, String> NameList = null;
+    private ConcurrentHashMap<Integer, String> PrimaryKeyList = null;
+    private ConcurrentHashMap<String, Integer> TabNameToTableID = null;
+    private Vector<Integer> iteratorIntegers = null;
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
         // some code goes here
+        FileList = new ConcurrentHashMap<>();
+        NameList = new ConcurrentHashMap<>();
+        PrimaryKeyList = new ConcurrentHashMap<>();
+        TabNameToTableID = new ConcurrentHashMap<>();
+        iteratorIntegers = new Vector<>();
+        TableCount = 0;
     }
 
     /**
@@ -37,6 +49,20 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        TableCount++;
+        int tabid = file.getId();
+        /**
+         * This should handle duplicate IDs and Names
+         */
+        if (iteratorIntegers.contains(tabid))
+        TabNameToTableID.remove(NameList.get(tabid));
+        iteratorIntegers.add(tabid);
+        FileList.put(tabid, file);
+        NameList.put(tabid, name);
+        PrimaryKeyList.put(tabid, pkeyField);
+        if (TabNameToTableID.contains(name)) 
+        throw new AssertionError("Duplicate Name from Catalog.addTable(...)");
+        TabNameToTableID.put(name, tabid);
     }
 
     public void addTable(DbFile file, String name) {
@@ -60,7 +86,10 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if (name==null) throw new NoSuchElementException();
+        Integer ans = TabNameToTableID.get(name);
+        if (ans==null) throw new NoSuchElementException();
+        return ans;
     }
 
     /**
@@ -71,7 +100,9 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        TupleDesc ans = FileList.get(tableid).getTupleDesc();
+        if (ans==null) throw new NoSuchElementException();
+        return ans;
     }
 
     /**
@@ -82,27 +113,35 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        DbFile ans = FileList.get(tableid);
+        if (ans==null) throw new NoSuchElementException();
+        return FileList.get(tableid);
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        return PrimaryKeyList.get(tableid);
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return iteratorIntegers.iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        return NameList.get(id);
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        FileList = new ConcurrentHashMap<>();
+        NameList = new ConcurrentHashMap<>();
+        PrimaryKeyList = new ConcurrentHashMap<>();
+        TabNameToTableID = new ConcurrentHashMap<>();
+        iteratorIntegers = new Vector<>();
+        TableCount = 0;
     }
     
     /**

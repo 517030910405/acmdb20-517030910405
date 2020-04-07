@@ -1,6 +1,7 @@
 package simpledb;
 
 import java.io.Serializable;
+import java.util.Vector;
 
 /**
  * A RecordId is a reference to a specific tuple on a specific page of a
@@ -9,7 +10,9 @@ import java.io.Serializable;
 public class RecordId implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
+    private PageId PageNum = null;
+    private int TupleNum = -1;
+    private Vector<Integer> hashCoder = null;
     /**
      * Creates a new RecordId referring to the specified PageId and tuple
      * number.
@@ -21,6 +24,11 @@ public class RecordId implements Serializable {
      */
     public RecordId(PageId pid, int tupleno) {
         // some code goes here
+        PageNum = pid;
+        TupleNum = tupleno;
+        hashCoder = new Vector<>();
+        hashCoder.add(pid.hashCode());
+        hashCoder.add(tupleno);
     }
 
     /**
@@ -28,7 +36,7 @@ public class RecordId implements Serializable {
      */
     public int tupleno() {
         // some code goes here
-        return 0;
+        return TupleNum;
     }
 
     /**
@@ -36,7 +44,7 @@ public class RecordId implements Serializable {
      */
     public PageId getPageId() {
         // some code goes here
-        return null;
+        return PageNum;
     }
 
     /**
@@ -48,7 +56,12 @@ public class RecordId implements Serializable {
     @Override
     public boolean equals(Object o) {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        if (this==o) return true;
+        if (o==null || this.getClass()!=o.getClass()) return false;
+        RecordId other = (RecordId) o;
+        return this.getPageId().equals(other.getPageId()) 
+            && this.tupleno() == other.tupleno();
+        // throw new UnsupportedOperationException("implement this");
     }
 
     /**
@@ -60,8 +73,8 @@ public class RecordId implements Serializable {
     @Override
     public int hashCode() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
-
+        // throw new UnsupportedOperationException("implement this");
+        return hashCoder.hashCode();
     }
 
 }

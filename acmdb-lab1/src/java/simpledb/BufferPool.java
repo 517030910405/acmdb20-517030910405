@@ -1,7 +1,8 @@
 package simpledb;
 
 import java.io.*;
-
+// import java.util.NoSuchElementException;
+// import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -26,6 +27,9 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
+    // private Vector<Page> Buffer_Pool_RAM = null;
+    private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -33,6 +37,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+        Buffer_Pool_RAM = new ConcurrentHashMap<>();
     }
     
     public static int getPageSize() {
@@ -41,7 +46,7 @@ public class BufferPool {
     
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void setPageSize(int pageSize) {
-    	BufferPool.pageSize = pageSize;
+        BufferPool.pageSize = pageSize;
     }
     
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
@@ -65,9 +70,16 @@ public class BufferPool {
      * @param perm the requested permissions on the page
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
-        throws TransactionAbortedException, DbException {
+        throws TransactionAbortedException, DbException{
         // some code goes here
-        return null;
+        if (pid == null) throw new DbException("pid is null");
+        Page ans = Buffer_Pool_RAM.get(pid);
+        if (ans!=null) return ans;
+        // new page
+        // System.out.println("Notice! by Jiasen ");
+        ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+        Buffer_Pool_RAM.put(pid, ans);
+        return ans;
     }
 
     /**

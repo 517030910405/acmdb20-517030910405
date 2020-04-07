@@ -67,8 +67,9 @@ public class HeapPage implements Page {
     */
     private int getNumTuples() {        
         // some code goes here
-        return 0;
-
+        int ans = (BufferPool.getPageSize()*8) /(td.getSize()*8+1) ;
+        // System.out.println("getNumTuples: "+ans);
+        return ans;
     }
 
     /**
@@ -76,10 +77,12 @@ public class HeapPage implements Page {
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
     private int getHeaderSize() {        
-        
         // some code goes here
-        return 0;
-                 
+        /**
+         * ans = ceiling(NumTup/8)
+         */
+        int ans = (getNumTuples()+7)/8;
+        return ans;
     }
     
     /** Return a view of this page before it was modified
@@ -111,8 +114,9 @@ public class HeapPage implements Page {
      * @return the PageId associated with this page.
      */
     public HeapPageId getId() {
-    // some code goes here
-    throw new UnsupportedOperationException("implement this");
+        // some code goes here
+        return this.pid;
+        // throw new UnsupportedOperationException("implement this");
     }
 
     /**
@@ -265,7 +269,7 @@ public class HeapPage implements Page {
      */
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
-	// not necessary for lab1
+    	// not necessary for lab1
     }
 
     /**
@@ -273,7 +277,7 @@ public class HeapPage implements Page {
      */
     public TransactionId isDirty() {
         // some code goes here
-	// Not necessary for lab1
+	    // Not necessary for lab1
         return null;      
     }
 
@@ -282,7 +286,11 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        return 0;
+        // this.header
+        int headerSize = getHeaderSize();
+        int bit_cnt = 0;
+        for ( int i=0; i<headerSize; ++i ){ bit_cnt += java.lang.Integer.bitCount(((int)header[i]) &255); }
+        return numSlots - bit_cnt;
     }
 
     /**
@@ -290,7 +298,8 @@ public class HeapPage implements Page {
      */
     public boolean isSlotUsed(int i) {
         // some code goes here
-        return false;
+        int ans = (header[i>>3] >> (i&7))&1;
+        return ans == 1;
     }
 
     /**
@@ -307,7 +316,14 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        return null;
+        Vector<Tuple> ans = new Vector<>();
+        for (int i=0; i<numSlots; ++i){
+            if (isSlotUsed(i)){
+                ans.add(tuples[i]);
+            }
+        }
+        // if (ans.size()!=numSlots-getNumEmptySlots()) throw new AssertionError("isSlotUsed Error");
+        return ans.iterator();
     }
 
 }
