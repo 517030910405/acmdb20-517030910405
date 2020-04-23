@@ -2,9 +2,14 @@ package simpledb;
 
 import java.io.*;
 import java.util.*;
+
+import org.hamcrest.core.IsInstanceOf;
+
 import java.nio.channels.FileChannel;
 
+import simpledb.BTreeChecker.SubtreeSummary;
 import simpledb.Predicate.Op;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * BTreeFile is an implementation of a DbFile that stores a B+ tree.
@@ -192,11 +197,53 @@ public class BTreeFile implements DbFile {
 	 * @return the left-most leaf page possibly containing the key field f
 	 * 
 	 */
-	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages, BTreePageId pid, Permissions perm,
-			Field f) 
+	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages,
+			BTreePageId pid, Permissions perm, Field f) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
-        return null;
+		Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
+		if (!(now_page instanceof BTreePage)){
+			// System.out.println("+"+now_page+"+");
+			throw new NotImplementedException();
+		}
+		if (now_page.getClass()==BTreeLeafPage.class){
+			BTreeLeafPage leaf1 = (BTreeLeafPage) now_page;
+			if (f==null) return leaf1;
+			Iterator<Tuple> tupIter1 =  leaf1.reverseIterator();
+			if (!tupIter1.hasNext()) throw new NotImplementedException();
+			Tuple tuple1 = tupIter1.next();
+			BTreePageId leaf2Id = leaf1.getRightSiblingId();
+			if (leaf2Id==null){
+				return leaf1;
+			}
+			BTreeLeafPage leaf2 = (BTreeLeafPage)Database.getBufferPool().getPage(tid, leaf2Id, perm);
+			Iterator<Tuple> tupIter2 = leaf2.iterator();
+			Tuple tuple2 = tupIter2.next();
+			if (tuple1.getField(keyField()).compare(Predicate.Op.LESS_THAN, f)
+					&&f.compare(Predicate.Op.EQUALS, tuple2.getField(keyField()))){
+				return leaf2;
+			} else{
+				return leaf1;
+			}
+		}
+		else{
+			if (now_page.getClass()!=BTreeInternalPage.class){
+				throw new NotImplementedException();
+			}
+			BTreeInternalPage subRoot = (BTreeInternalPage)now_page;
+			Iterator<BTreeEntry> entryIter =  subRoot.iterator();
+			BTreeEntry entry = null;
+			while (entryIter.hasNext()){
+				entry = entryIter.next();
+				if (f==null || f.compare(Predicate.Op.LESS_THAN_OR_EQ, entry.getKey())){
+					BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f);
+					return ans;
+				}
+			}
+			BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f);
+			return ans;
+		}
+		// return null;
 	}
 	
 	/**
@@ -214,6 +261,7 @@ public class BTreeFile implements DbFile {
 	BTreeLeafPage findLeafPage(TransactionId tid, BTreePageId pid, Permissions perm,
 			Field f) 
 					throws DbException, TransactionAbortedException {
+		// System.out.println(pid);
 		return findLeafPage(tid, new HashMap<PageId, Page>(), pid, perm, f);
 	}
 
@@ -1180,6 +1228,7 @@ class BTreeSearchIterator extends AbstractDbFileIterator {
 		else {
 			curp = f.findLeafPage(tid, root, Permissions.READ_ONLY, null);
 		}
+		// System.out.println("+"+curp);
 		it = curp.iterator();
 	}
 
@@ -1196,6 +1245,7 @@ class BTreeSearchIterator extends AbstractDbFileIterator {
 
 			while (it.hasNext()) {
 				Tuple t = it.next();
+				// System.out.println(t+"+"+ipred.getField());
 				if (t.getField(f.keyField()).compare(ipred.getOp(), ipred.getField())) {
 					return t;
 				}

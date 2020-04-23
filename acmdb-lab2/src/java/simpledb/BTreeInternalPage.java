@@ -17,7 +17,10 @@ public class BTreeInternalPage extends BTreePage {
 	private final byte header[];
 	private final Field keys[];
 	private final int children[];
-	private final int numSlots;
+	/**
+	 * numSlots private -> public
+	 */
+	public final int numSlots;
 	
 	private int childCategory; // either leaf or internal
 

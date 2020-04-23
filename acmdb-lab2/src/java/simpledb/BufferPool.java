@@ -1,9 +1,16 @@
 package simpledb;
 
 import java.io.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.Random;
+import java.util.Vector;
 // import java.util.NoSuchElementException;
 // import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -19,16 +26,47 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BufferPool {
     /** Bytes per page, including header. */
     private static final int PAGE_SIZE = 4096;
-
     private static int pageSize = PAGE_SIZE;
     
     /** Default number of pages passed to the constructor. This is used by
     other classes. BufferPool should use the numPages argument to the
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
+    public int numOfPages = DEFAULT_PAGES;
 
     // private Vector<Page> Buffer_Pool_RAM = null;
     private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
+    private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
+    private ConcurrentHashMap<PageId, Integer> indexInList = null;
+    private int FirstID = 0;
+    private Random rand = null;
+
+    private int cnt = 0;
+
+    /**
+     * Get Evict Index and Remove from LRU List
+     * @return The Next Evicted PageID
+     */
+    private PageId decideNextEviction(){
+        PageId ans = BufferPoolPageID.get(FirstID);
+        while (ans==null){
+            ++FirstID;
+            ans = BufferPoolPageID.get(FirstID);
+        }
+        BufferPoolPageID.remove(FirstID);
+        indexInList.remove(ans);
+        return ans;
+    }
+    
+    /**
+     * Evict the next page
+     * Using LRU
+     * @throws IOException
+     */
+    private void EvictNext()throws IOException{
+        PageId EvPageID = decideNextEviction();
+        flushPage(EvPageID);
+    }
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -37,7 +75,11 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+        numOfPages = numPages;
         Buffer_Pool_RAM = new ConcurrentHashMap<>();
+        rand = new Random();
+        BufferPoolPageID = new ConcurrentHashMap<>();
+        indexInList = new ConcurrentHashMap<>();
     }
     
     public static int getPageSize() {
@@ -72,13 +114,34 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException{
         // some code goes here
+        ++cnt;
         if (pid == null) throw new DbException("pid is null");
         Page ans = Buffer_Pool_RAM.get(pid);
-        if (ans!=null) return ans;
+        if (ans!=null) {
+            int index = indexInList.get(pid);
+            indexInList.remove(pid);
+            indexInList.put(pid, cnt);
+            BufferPoolPageID.remove(index);
+            BufferPoolPageID.put(cnt, pid);
+            return ans;
+        }
         // new page
         // System.out.println("Notice! by Jiasen ");
+        // Random rnd = new Random();
+        // int evict = java.util.Random;
+        while (Buffer_Pool_RAM.size()>=this.numOfPages){
+            try{
+                EvictNext();
+            } catch(IOException e){
+                throw new NotImplementedException();
+            }
+        }
         ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
         Buffer_Pool_RAM.put(pid, ans);
+        // System.out.println(pid);
+        // System.out.println(cnt);
+        indexInList.put(pid, cnt);
+        this.BufferPoolPageID.put(cnt, pid);
         return ans;
     }
 
@@ -197,6 +260,17 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        Page page = this.Buffer_Pool_RAM.get(pid);
+        if (page == null) {
+            throw new IOException("Pid Not Found");
+        }
+        DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        if (page.isDirty()!=null){
+            file.writePage(page);
+            throw new NotImplementedException();
+        }
+        this.Buffer_Pool_RAM.remove(pid);
+        return;
     }
 
     /** Write all pages of the specified transaction to disk.

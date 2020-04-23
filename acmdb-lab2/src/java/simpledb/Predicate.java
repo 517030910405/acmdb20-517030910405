@@ -45,6 +45,12 @@ public class Predicate implements Serializable {
     }
     
     /**
+     * Variables
+     */
+    private int fieldNum;
+    private Op operator;
+    private Field fieldValue;
+    /**
      * Constructor.
      * 
      * @param field
@@ -56,6 +62,9 @@ public class Predicate implements Serializable {
      */
     public Predicate(int field, Op op, Field operand) {
         // some code goes here
+        fieldNum = field;
+        operator = op;
+        fieldValue = operand;
     }
 
     /**
@@ -64,7 +73,7 @@ public class Predicate implements Serializable {
     public int getField()
     {
         // some code goes here
-        return -1;
+        return fieldNum;
     }
 
     /**
@@ -73,7 +82,7 @@ public class Predicate implements Serializable {
     public Op getOp()
     {
         // some code goes here
-        return null;
+        return operator;
     }
     
     /**
@@ -82,7 +91,7 @@ public class Predicate implements Serializable {
     public Field getOperand()
     {
         // some code goes here
-        return null;
+        return fieldValue;
     }
     
     /**
@@ -97,7 +106,13 @@ public class Predicate implements Serializable {
      */
     public boolean filter(Tuple t) {
         // some code goes here
-        return false;
+        // boolean ans = fieldValue.compare(operator, t.getField(fieldNum));
+        // if (t==null) return false;
+        // if (t.getField(fieldNum)==null) return false;
+        // if (fieldValue==null) return false;
+        boolean ans =  t.getField(fieldNum).compare(operator,fieldValue);
+        // System.out.println(this.toString()+ans+", "+t.getField(fieldNum));
+        return ans;
     }
 
     /**
@@ -106,6 +121,6 @@ public class Predicate implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "";
+        return "(tuple["+fieldNum+"] "+operator.toString()+" "+fieldValue.toString()+")";
     }
 }
