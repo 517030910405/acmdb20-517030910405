@@ -201,12 +201,19 @@ public class BTreeFile implements DbFile {
 			BTreePageId pid, Permissions perm, Field f) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
-		Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
+		// Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
+		Page now_page = null;
+		if (pid.pgcateg()==BTreePageId.LEAF){
+			now_page = this.getPage(tid, dirtypages,  pid, perm);
+		} else{
+			now_page = this.getPage(tid, dirtypages,  pid, Permissions.READ_ONLY);
+		}
 		if (!(now_page instanceof BTreePage)){
 			// System.out.println("+"+now_page+"+");
 			throw new NotImplementedException();
 		}
 		if (now_page.getClass()==BTreeLeafPage.class){
+
 			BTreeLeafPage leaf1 = (BTreeLeafPage) now_page;
 			if (f==null) return leaf1;
 			Iterator<Tuple> tupIter1 =  leaf1.reverseIterator();
@@ -216,13 +223,15 @@ public class BTreeFile implements DbFile {
 			if (leaf2Id==null){
 				return leaf1;
 			}
-			BTreeLeafPage leaf2 = (BTreeLeafPage)Database.getBufferPool().getPage(tid, leaf2Id, perm);
+			// BTreeLeafPage leaf2 = (BTreeLeafPage)Database.getBufferPool().getPage(tid, leaf2Id, perm);
+			BTreeLeafPage leaf2 = (BTreeLeafPage)this.getPage(tid, dirtypages, leaf2Id, perm);
 			Iterator<Tuple> tupIter2 = leaf2.iterator();
 			Tuple tuple2 = tupIter2.next();
 			if (tuple1.getField(keyField()).compare(Predicate.Op.LESS_THAN, f)
 					&&f.compare(Predicate.Op.EQUALS, tuple2.getField(keyField()))){
-				return leaf2;
-			} else{
+						// return leaf1;
+						return leaf2;
+					} else{
 				return leaf1;
 			}
 		}
