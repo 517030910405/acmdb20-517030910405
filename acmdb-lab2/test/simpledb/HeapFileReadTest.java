@@ -79,6 +79,7 @@ public class HeapFileReadTest extends SimpleDbTestBase {
 
     @Test
     public void testIteratorBasic() throws Exception {
+        // System.out.println("\n\nLijs point1\n\n");
         HeapFile smallFile = SystemTestUtil.createRandomHeapFile(2, 3, null,
                 null);
 

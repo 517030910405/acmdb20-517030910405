@@ -21,7 +21,7 @@ public class EvictionTest extends SimpleDbTestBase {
     private static final int BUFFER_PAGES = 16;
 
     @Test public void testHeapFileScanWithManyPages() throws IOException, DbException, TransactionAbortedException {
-        System.out.println("EvictionTest creating large table");
+        System.out.println("EvictionTest creating large table\n\n");
         HeapFile f = SystemTestUtil.createRandomHeapFile(2, 1024*500, null, null);
         System.out.println("EvictionTest scanning large table");
         Database.resetBufferPool(BUFFER_PAGES);
