@@ -332,7 +332,7 @@ public class BTreeFile implements DbFile {
 		BTreeInternalPage parentPage = (BTreeInternalPage)
 			this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
 		parentPage = splitInternalPage(tid, dirtypages, parentPage , field);
-		Tuple tupMid = tupIter1.next();
+		Tuple tupMid = tupToRemove.lastElement();
 		tupToRemove.add(tupMid);
 		BTreeEntry entry = new BTreeEntry(tupMid.getField(this.keyField) 
 			, leaf.getId(), leaf2.getId());
