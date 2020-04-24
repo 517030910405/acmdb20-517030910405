@@ -14,7 +14,7 @@ import java.io.*;
 public class BTreeLeafPage extends BTreePage {
 	private final byte header[];
 	private final Tuple tuples[];
-	private final int numSlots;
+	public final int numSlots;
 	
 	private int leftSibling; // leaf node or 0
 	private int rightSibling; // leaf node or 0

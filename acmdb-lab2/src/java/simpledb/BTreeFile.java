@@ -305,6 +305,33 @@ public class BTreeFile implements DbFile {
 		// the new entry.  getParentWithEmtpySlots() will be useful here.  Don't forget to update
 		// the sibling pointers of all the affected leaf pages.  Return the page into which a 
 		// tuple with the given key field should be inserted.
+		// BTreeRootPtrPage rootPtr = this.getRootPtrPage(tid, dirtypages);
+		// BTreePageId rootId = rootPtr.getRootId();
+		// BTreeLeafPage leaf =  findLeafPage(tid, dirtypages, rootId, Permissions.READ_WRITE, field);
+		BTreeLeafPage leaf =  page;
+		BTreePageId leafId = leaf.getId();
+		if (leaf.getNumTuples()<leaf.numSlots){
+			return leaf;
+		}
+		BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
+		Iterator<Tuple> tupIter1 = leaf.reverseIterator();
+		int leftSize = leaf.numSlots/2;
+		int rightSize = leaf.numSlots - leftSize -1;
+		for (int i=0;i<rightSize;++i){
+			if (!tupIter1.hasNext()){
+				throw new NotImplementedException();
+			}
+			leaf2.insertTuple(tupIter1.next());
+		}
+		BTreePageId parentPid = new BTreePageId(leafId.getTableId(), leaf.parent,  BTreePageId.INTERNAL);
+		BTreeInternalPage parentPage = (BTreeInternalPage)
+			this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
+		parentPage = splitInternalPage(tid, dirtypages, parentPage , field);
+		BTreeEntry entry = new BTreeEntry(tupIter1.next().getField(this.keyField) 
+			, leaf.getId(), leaf2.getId());
+		parentPage.insertEntry(entry);
+		// leaf.deleteTuple(t);
+		//TODO: 
         return null;
 		
 	}
@@ -1037,7 +1064,7 @@ public class BTreeFile implements DbFile {
 //				fos.close();
 //				return;
 //			}
-//		}
+//		  }
 
 		// otherwise, get a read lock on the root pointer page and use it to locate 
 		// the first header page
