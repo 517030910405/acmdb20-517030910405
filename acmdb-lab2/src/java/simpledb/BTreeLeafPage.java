@@ -290,8 +290,11 @@ public class BTreeLeafPage extends BTreePage {
 		RecordId rid = t.getRecordId();
 		if(rid == null)
 			throw new DbException("tried to delete tuple with null rid");
-		if((rid.getPageId().pageNumber() != pid.pageNumber()) || (rid.getPageId().getTableId() != pid.getTableId()))
+		if((rid.getPageId().pageNumber() != pid.pageNumber()) || (rid.getPageId().getTableId() != pid.getTableId())){
+			// System.out.println(rid.getPageId());
+			// System.out.println(pid);
 			throw new DbException("tried to delete tuple on invalid page or table");
+		}
 		if (!isSlotUsed(rid.tupleno()))
 			throw new DbException("tried to delete null tuple.");
 		markSlotUsed(rid.tupleno(), false);
@@ -514,6 +517,14 @@ public class BTreeLeafPage extends BTreePage {
 		} catch (ArrayIndexOutOfBoundsException e) {
 			throw new NoSuchElementException();
 		}
+	}
+	public String View(){
+		Iterator<Tuple> it = this.iterator();
+		String ans = "";
+		while (it.hasNext()){
+			ans += it.next()+", ";
+		}
+		return "["+ans+"]";
 	}
 }
 

@@ -6,6 +6,7 @@ import java.util.*;
 import org.hamcrest.core.IsInstanceOf;
 
 import java.nio.channels.FileChannel;
+import java.security.KeyStore.Entry;
 
 import simpledb.BTreeChecker.SubtreeSummary;
 import simpledb.Predicate.Op;
@@ -198,7 +199,7 @@ public class BTreeFile implements DbFile {
 	 * 
 	 */
 	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages,
-			BTreePageId pid, Permissions perm, Field f) 
+			BTreePageId pid, Permissions perm, Field f, BTreePageId parentid) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
 		// Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
@@ -215,9 +216,14 @@ public class BTreeFile implements DbFile {
 		if (now_page.getClass()==BTreeLeafPage.class){
 
 			BTreeLeafPage leaf1 = (BTreeLeafPage) now_page;
+			leaf1.setParentId(parentid);
 			if (f==null) return leaf1;
 			Iterator<Tuple> tupIter1 =  leaf1.reverseIterator();
-			if (!tupIter1.hasNext()) throw new NotImplementedException();
+			if (!tupIter1.hasNext()) {
+				// System.out.println("LeafNoNextPage = "+leaf1.getId());
+				return leaf1;
+				// throw new NotImplementedException();
+			}
 			Tuple tuple1 = tupIter1.next();
 			BTreePageId leaf2Id = leaf1.getRightSiblingId();
 			if (leaf2Id==null){
@@ -229,8 +235,8 @@ public class BTreeFile implements DbFile {
 			Tuple tuple2 = tupIter2.next();
 			if (tuple1.getField(keyField()).compare(Predicate.Op.LESS_THAN, f)
 					&&f.compare(Predicate.Op.EQUALS, tuple2.getField(keyField()))){
-						// return leaf1;
-						return leaf2;
+						return leaf1;
+						// return leaf2;
 					} else{
 				return leaf1;
 			}
@@ -245,14 +251,41 @@ public class BTreeFile implements DbFile {
 			while (entryIter.hasNext()){
 				entry = entryIter.next();
 				if (f==null || f.compare(Predicate.Op.LESS_THAN_OR_EQ, entry.getKey())){
-					BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f);
+					BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f, pid);
 					return ans;
 				}
 			}
-			BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f);
+			BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f, pid);
 			return ans;
 		}
 		// return null;
+	}
+	/**
+	 * Recursive function which finds and locks the leaf page in the B+ tree corresponding to
+	 * the left-most page possibly containing the key field f. It locks all internal
+	 * nodes along the path to the leaf node with READ_ONLY permission, and locks the 
+	 * leaf node with permission perm.
+	 * 
+	 * If f is null, it finds the left-most leaf page -- used for the iterator
+	 * 
+	 * @param tid - the transaction id
+	 * @param dirtypages - the list of dirty pages which should be updated with all new dirty pages
+	 * @param pid - the current page being searched
+	 * @param perm - the permissions with which to lock the leaf page
+	 * @param f - the field to search for
+	 * @return the left-most leaf page possibly containing the key field f
+	 * 
+	 */
+	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages,
+			BTreePageId pid, Permissions perm, Field f) 
+					throws DbException, TransactionAbortedException {
+		// some code goes here
+		// Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
+		try{
+			return findLeafPage(tid, dirtypages, pid, perm, f, getRootPtrPage(tid, dirtypages).getId() );
+		} catch (IOException e){
+			throw new NotImplementedException();
+		}
 	}
 	
 	/**
@@ -305,54 +338,119 @@ public class BTreeFile implements DbFile {
 		// the new entry.  getParentWithEmtpySlots() will be useful here.  Don't forget to update
 		// the sibling pointers of all the affected leaf pages.  Return the page into which a 
 		// tuple with the given key field should be inserted.
-
+		
 		BTreeLeafPage leaf =  page;
-		// No need to split
-		if (leaf.getNumEmptySlots()>0){
-			return leaf;
-		}
-
-		//Prepare for leaf2
-		BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
-		Iterator<Tuple> tupIter1 = leaf.reverseIterator();
-		int leftSize = leaf.numSlots/2;
-		int rightSize = leaf.numSlots - leftSize;
-		Vector<Tuple> tupToRemove = new Vector<>();
-		for (int i=0;i<rightSize;++i){
-			if (!tupIter1.hasNext()){throw new NotImplementedException();}
-			Tuple tup = tupIter1.next();
-			tupToRemove.add(tup);
-			leaf2.insertTuple(tup);
-		}
-
-		//Modify Parent
+		// System.err.println(leaf.View());
 		BTreePageId parentPid = leaf.getParentId();
-		BTreeInternalPage parentPage = (BTreeInternalPage)
-			this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
-		Tuple tupMid = tupToRemove.lastElement();
-		BTreeEntry entry = new BTreeEntry(tupMid.getField(this.keyField) 
-			, leaf.getId(), leaf2.getId());
-		parentPage = splitInternalPage(tid, dirtypages, parentPage , entry.getKey());
-		parentPage.insertEntry(entry);
-		leaf.setParentId(parentPage.getId());
-		leaf2.setParentId(parentPage.getId());
+		if (parentPid.pgcateg()==BTreePageId.ROOT_PTR){
+			// No need to split
+			if (leaf.getNumEmptySlots()>0){return leaf;}
+			// System.err.println("Leaf RootPtr");
+			
+			//Prepare for leaf2
+			BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
+			Iterator<Tuple> tupIter1 = leaf.reverseIterator();
+			int leftSize = leaf.numSlots/2;
+			int rightSize = leaf.numSlots - leftSize;
+			Vector<Tuple> tupToRemove = new Vector<>();
+			for (int i=0;i<rightSize;++i){
+				if (!tupIter1.hasNext()){throw new NotImplementedException();}
+				Tuple tup = tupIter1.next();
+				tupToRemove.add(tup);
+			}
+			//Remove Tuple from leaf
+			for (Tuple tup2: tupToRemove){
+				leaf.deleteTuple(tup2);
+				leaf2.insertTuple(tup2);
+			}
+			
+			//Modify Parent
+			// Prepare for new root
+			BTreeInternalPage newRoot = (BTreeInternalPage)
+				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+			Tuple midTup = tupToRemove.lastElement();
 
-		//Remove Tuple from leaf
-		for (Tuple tup2: tupToRemove){
-			leaf.deleteTuple(tup2);
+			BTreeEntry midEntry = new BTreeEntry(midTup.getField(this.keyField),
+				leaf.getId(), leaf2.getId());
+			BTreeRootPtrPage rootPtr = this.getRootPtrPage(tid, dirtypages);
+			newRoot.insertEntry(midEntry);
+			newRoot.setParentId(rootPtr.getId());
+			rootPtr.setRootId(newRoot.getId());
+			leaf.setParentId(newRoot.getId());
+			leaf2.setParentId(newRoot.getId());
+
+			// Sibling Update
+			leaf2.setRightSiblingId(leaf.getRightSiblingId());
+			leaf2.setLeftSiblingId(leaf.getId());
+			leaf.setRightSiblingId(leaf2.getId());
+			//Return
+			if (midTup.getField(this.keyField).compare(Predicate.Op.LESS_THAN_OR_EQ, field)){
+				return leaf2;
+			}else{
+				return leaf;
+			}
+
+
+		} else{
+			// System.out.println("\nLeaf\n");
+			// No need to split
+			if (leaf.getNumEmptySlots()>0){return leaf;}
+			// System.err.println("Leaf Internal");
+
+			//Prepare for leaf2
+			BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
+			// System.out.println("leaf1 = "+leaf.getId());
+			// System.out.println("leaf2 = "+leaf2.getId());
+			Iterator<Tuple> tupIter1 = leaf.reverseIterator();
+			int leftSize = leaf.numSlots/2;
+			int rightSize = leaf.numSlots - leftSize;
+			Vector<Tuple> tupToRemove = new Vector<>();
+			for (int i=0;i<rightSize;++i){
+				if (!tupIter1.hasNext()){throw new NotImplementedException();}
+				Tuple tup = tupIter1.next();
+				tupToRemove.add(tup);
+			}
+			//Remove Tuple from leaf
+			for (Tuple tup2: tupToRemove){
+				leaf.deleteTuple(tup2);
+				leaf2.insertTuple(tup2);
+			}
+			//Modify Parent
+			BTreeInternalPage parentPage = (BTreeInternalPage)
+				this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
+			Tuple tupMid = tupToRemove.lastElement();
+			BTreeEntry entry = new BTreeEntry(tupMid.getField(this.keyField) 
+				, leaf.getId(), leaf2.getId());
+			parentPage = splitInternalPage(tid, dirtypages, parentPage , entry.getKey());
+			try{
+				parentPage.insertEntry(entry);
+			}catch(Exception e){
+				// System.out.println("E: "+parentPage.View());
+				// System.out.println("E: "+parentPage.getId());
+				// System.out.println("E: "+leaf.View());
+				// System.out.println("E: "+leaf2.View());
+
+				// System.out.println("E: "+entry);
+				throw e;
+			}
+			// System.out.println("OK!\n");
+			leaf.setParentId(parentPage.getId());
+			leaf2.setParentId(parentPage.getId());
+
+
+			// Sibling Update
+			leaf2.setRightSiblingId(leaf.getRightSiblingId());
+			leaf2.setLeftSiblingId(leaf.getId());
+			leaf.setRightSiblingId(leaf2.getId());
+
+			//Return
+			if (tupMid.getField(this.keyField).compare(Predicate.Op.LESS_THAN_OR_EQ, field)){
+				return leaf2;
+			}else{
+				return leaf;
+			}
 		}
-
-		// Sibling Update
-		leaf2.setRightSiblingId(leaf.getRightSiblingId());
-		leaf2.setLeftSiblingId(leaf.getId());
-		leaf.setRightSiblingId(leaf2.getId());
-
-		//Return
-		if (tupMid.getField(this.keyField).compare(Predicate.Op.LESS_THAN_OR_EQ, field)){
-			return leaf2;
-		}else{
-			return leaf;
-		}
+		// return null;
 	}
 	
 	/**
@@ -383,28 +481,38 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, Field field) 
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
+		// System.out.println("\nInternal\n");
 		BTreePageId parentID = page.getParentId();
 		if (parentID.pgcateg()==BTreePageId.ROOT_PTR){
 			//if no need to split
-			if (page.getNumEmptySlots()>0){return page;}
+			if (page.getNumEmptySlots()>0){
+				// System.out.println("short return = " +field);
+				return page;
+			}
+			// System.err.println("Internal RootPtr");
 			
 			// Prepare for new page
 			BTreeInternalPage page2 = (BTreeInternalPage)
 				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 			int numLeft = page.numSlots/2;
 			int numRight = page.numSlots - numLeft -1;
-			Iterator<BTreeEntry> entryIter = page.iterator();
+			Iterator<BTreeEntry> entryIter = page.reverseIterator();
 			Iterator<BTreeEntry> entryIter2 = null;
+			Vector<BTreeEntry> entryToRomove = new Vector<>();
 			for (int i=0; i< numRight; ++i){
-				if (entryIter.hasNext()){page2.insertEntry(entryIter.next());}
+				if (entryIter.hasNext()){entryToRomove.add(entryIter.next());}
 				else{throw new NotImplementedException();}
 			}
-
+			for (BTreeEntry entry: entryToRomove){
+				page.deleteKeyAndRightChild(entry);
+				page2.insertEntry(entry);
+			}
 			// Prepare for new root
 			BTreeInternalPage newRoot = (BTreeInternalPage)
 				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 			if (!entryIter.hasNext()) throw new NotImplementedException();
 			BTreeEntry midEntry = entryIter.next();
+			page.deleteKeyAndRightChild(midEntry);
 			BTreeEntry newMidEntry = new BTreeEntry(midEntry.getKey(), page.getId(), page2.getId());
 			BTreeRootPtrPage rootPtr = this.getRootPtrPage(tid, dirtypages);
 			newRoot.insertEntry(newMidEntry);
@@ -412,20 +520,31 @@ public class BTreeFile implements DbFile {
 			rootPtr.setRootId(newRoot.getId());
 			page.setParentId(newRoot.getId());
 			page2.setParentId(newRoot.getId());
-			
+			// System.out.println(page.View());
+			// System.out.println(midEntry+" "+field);
+			// System.out.println(page2.View());
 			// Remove Entries in page
-			entryIter2 = page2.iterator();
-			while (entryIter2.hasNext()){page.deleteKeyAndRightChild(entryIter2.next());}
-			page.deleteKeyAndRightChild(newMidEntry);
+			entryIter2 = page2.reverseIterator();
 
 			//Return 
-			if (field.compare(Predicate.Op.LESS_THAN, midEntry.getKey())){return page;}
-			else{return page2;}
+			// System.out.println(page.View());
+			// System.out.println(page2.View());
+			// System.out.println(field);
+			if (field.compare(Predicate.Op.LESS_THAN_OR_EQ, midEntry.getKey())){
+				// System.out.println(page.View());
+				return page;
+			}
+			else{
+				// System.out.println(page2.View());
+				return page2;
+			}
 		} else if (parentID.pgcateg()==BTreePageId.INTERNAL){
 			//if no need to split
 			if (page.getNumEmptySlots()>0){
+				// System.out.println("short return2 = " +field);
 				return page;
 			}
+			// System.err.println("Internal Internal");
 			//Prepare for new page
 			BTreeInternalPage page2 = (BTreeInternalPage)
 				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
@@ -433,10 +552,16 @@ public class BTreeFile implements DbFile {
 			int numRight = page.numSlots-numLeft-1;
 			Iterator<BTreeEntry> entryIter = page.reverseIterator();
 			Iterator<BTreeEntry> entryIter2 = null;
-			for (int i=0;i<numRight;++i){page2.insertEntry(entryIter.next());}
+			Vector<BTreeEntry> entryToRomove = new Vector<>();
+			for (int i=0;i<numRight;++i){entryToRomove.add(entryIter.next());}
+			for (BTreeEntry entry: entryToRomove){
+				page.deleteKeyAndRightChild(entry);
+				page2.insertEntry(entry);
+			}
 
 			//Prepare for parent
 			BTreeEntry midEntryP = entryIter.next();
+			page.deleteKeyAndRightChild(midEntryP);
 			BTreeEntry midEntry = new BTreeEntry(midEntryP.getKey(), page.getId(), page2.getId());
 			BTreeInternalPage parent = (BTreeInternalPage)
 				this.getPage(tid, dirtypages, parentID, Permissions.READ_WRITE);
@@ -444,16 +569,18 @@ public class BTreeFile implements DbFile {
 			parent.insertEntry(midEntry);
 			page.setParentId(parent.getId());
 			page2.setParentId(parent.getId());
-
+			// System.out.println(page.View());
+			// System.out.println(midEntry+" II "+field);
+			// System.out.println(page2.View());
 			//Remove from page
 			entryIter2 = page2.reverseIterator();
-			while (entryIter2.hasNext()){page.deleteKeyAndRightChild(entryIter2.next());}
-			page.deleteKeyAndRightChild(midEntryP);
 			//Internal has no Sibling
 			//Return
 			if (midEntry.getKey().compare(Predicate.Op.GREATER_THAN_OR_EQ, field)){
+				// System.out.println(page.View());
 				return page;
 			} else{
+				// System.out.println(page2.View());
 				return page2;
 			}
 		} else{

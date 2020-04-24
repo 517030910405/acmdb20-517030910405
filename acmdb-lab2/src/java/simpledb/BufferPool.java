@@ -3,6 +3,7 @@ package simpledb;
 import java.io.*;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Vector;
@@ -208,6 +209,25 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        HashMap<PageId,Page> dirtypages = new HashMap<>();
+        if (Database.getCatalog().getDatabaseFile(tableId).getClass()==BTreeFile.class){
+            BTreeFile file = (BTreeFile)Database.getCatalog().getDatabaseFile(tableId);
+            Field field = t.getField(file.keyField());
+            BTreeLeafPage leaf = file.findLeafPage(tid, 
+                file.getRootPtrPage(tid, dirtypages).getRootId(),
+                Permissions.READ_WRITE, field);
+            // System.out.println(leaf.View()+" + "+t);
+            leaf = file.splitLeafPage(tid, dirtypages, leaf, field);
+            // if (leaf.iterator().hasNext()){
+            //     if (!(leaf.iterator().next().getField(file.keyField()).compare(Predicate.Op.LESS_THAN_OR_EQ, field))){
+            //         throw new NotImplementedException();
+            //     }
+            //     if (!(leaf.reverseIterator().next().getField(file.keyField()).compare(Predicate.Op.GREATER_THAN_OR_EQ, field))){
+            //         throw new NotImplementedException();
+            //     }
+            // }
+            leaf.insertTuple(t);
+        }
     }
 
     /**

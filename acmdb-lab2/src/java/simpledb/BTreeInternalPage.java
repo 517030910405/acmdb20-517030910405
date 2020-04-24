@@ -1,6 +1,9 @@
 package simpledb;
 
 import java.util.*;
+
+import javax.swing.text.View;
+
 import java.io.*;
 
 import simpledb.Predicate.Op;
@@ -516,7 +519,8 @@ public class BTreeInternalPage extends BTreePage {
 		}
 
 		if(lessOrEqKey == -1) {
-			throw new DbException("attempt to insert invalid entry with left child " + 
+			throw new DbException(//View()+
+					"attempt to insert invalid entry with left child " + 
 					e.getLeftChild().pageNumber() + ", right child " + 
 					e.getRightChild().pageNumber() + " and key " + e.getKey() +
 					" HINT: one of these children must match an existing child on the page" +
@@ -670,6 +674,20 @@ public class BTreeInternalPage extends BTreePage {
 			throw new NoSuchElementException();
 		}
 	}
+	public String View(){
+		String ans = "";
+		Iterator<BTreeEntry> it = this.iterator();
+		while (it.hasNext()){
+			BTreeEntry entry = it.next();
+			ans += 
+			// " ( "+entry.getLeftChild() +" , "+ 
+			entry.getKey() +" , "
+			// + entry.getRightChild()+" ) "
+			;
+		}
+		return " [ "+ ans+" ] ";
+	}
+
 }
 
 /**
