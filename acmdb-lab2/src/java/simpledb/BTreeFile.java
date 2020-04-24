@@ -308,7 +308,7 @@ public class BTreeFile implements DbFile {
 
 		BTreeLeafPage leaf =  page;
 		// No need to split
-		if (leaf.getNumTuples()<leaf.numSlots){
+		if (leaf.getNumEmptySlots()>0){
 			return leaf;
 		}
 
@@ -316,7 +316,7 @@ public class BTreeFile implements DbFile {
 		BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
 		Iterator<Tuple> tupIter1 = leaf.reverseIterator();
 		int leftSize = leaf.numSlots/2;
-		int rightSize = leaf.numSlots - leftSize -1;
+		int rightSize = leaf.numSlots - leftSize;
 		Vector<Tuple> tupToRemove = new Vector<>();
 		for (int i=0;i<rightSize;++i){
 			if (!tupIter1.hasNext()){
@@ -382,8 +382,26 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, Field field) 
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
-		page.getParentId();
+		BTreePageId parentID = page.getParentId();
+		if (parentID.pgcateg()==BTreePageId.ROOT_PTR){
 
+		} else if (parentID.pgcateg()==BTreePageId.INTERNAL){
+			//if no need to split
+			if (page.getNumEmptySlots()==0){
+				return page;
+			}
+
+			//Prepare for new page
+			BTreeInternalPage page2 = (BTreeInternalPage)
+				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+			int numLeft = page.numSlots/2;
+			int numRight = page.numSlots-numLeft;
+			
+		} else{
+			throw new NotImplementedException();
+		}
+		// BTreeInternalPage 
+		
 		return null;
 	}
 	
