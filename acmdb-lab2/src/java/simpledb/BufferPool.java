@@ -47,7 +47,7 @@ public class BufferPool {
      * Get Evict Index and Remove from LRU List
      * @return The Next Evicted PageID
      */
-    private PageId decideNextEviction(){
+    private synchronized PageId decideNextEviction(){
         PageId ans = BufferPoolPageID.get(FirstID);
         while (ans==null){
             ++FirstID;
@@ -63,7 +63,7 @@ public class BufferPool {
      * Using LRU
      * @throws IOException
      */
-    private void EvictNext()throws IOException{
+    private synchronized void EvictNext()throws IOException{
         PageId EvPageID = decideNextEviction();
         flushPage(EvPageID);
     }
