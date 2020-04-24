@@ -305,35 +305,55 @@ public class BTreeFile implements DbFile {
 		// the new entry.  getParentWithEmtpySlots() will be useful here.  Don't forget to update
 		// the sibling pointers of all the affected leaf pages.  Return the page into which a 
 		// tuple with the given key field should be inserted.
-		// BTreeRootPtrPage rootPtr = this.getRootPtrPage(tid, dirtypages);
-		// BTreePageId rootId = rootPtr.getRootId();
-		// BTreeLeafPage leaf =  findLeafPage(tid, dirtypages, rootId, Permissions.READ_WRITE, field);
+
 		BTreeLeafPage leaf =  page;
-		BTreePageId leafId = leaf.getId();
+		// No need to split
 		if (leaf.getNumTuples()<leaf.numSlots){
 			return leaf;
 		}
+
+		//Prepare for leaf2
 		BTreeLeafPage leaf2 = (BTreeLeafPage)this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
 		Iterator<Tuple> tupIter1 = leaf.reverseIterator();
 		int leftSize = leaf.numSlots/2;
 		int rightSize = leaf.numSlots - leftSize -1;
+		Vector<Tuple> tupToRemove = new Vector<>();
 		for (int i=0;i<rightSize;++i){
 			if (!tupIter1.hasNext()){
 				throw new NotImplementedException();
 			}
-			leaf2.insertTuple(tupIter1.next());
+			Tuple tup = tupIter1.next();
+			tupToRemove.add(tup);
+			leaf2.insertTuple(tup);
 		}
-		BTreePageId parentPid = new BTreePageId(leafId.getTableId(), leaf.parent,  BTreePageId.INTERNAL);
+
+		//Modify Parent
+		BTreePageId parentPid = leaf.getParentId();
 		BTreeInternalPage parentPage = (BTreeInternalPage)
 			this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
 		parentPage = splitInternalPage(tid, dirtypages, parentPage , field);
-		BTreeEntry entry = new BTreeEntry(tupIter1.next().getField(this.keyField) 
+		Tuple tupMid = tupIter1.next();
+		tupToRemove.add(tupMid);
+		BTreeEntry entry = new BTreeEntry(tupMid.getField(this.keyField) 
 			, leaf.getId(), leaf2.getId());
 		parentPage.insertEntry(entry);
-		// leaf.deleteTuple(t);
-		//TODO: 
-        return null;
 		
+		//Remove Tuple from leaf
+		for (Tuple tup2: tupToRemove){
+			leaf.deleteTuple(tup2);
+		}
+
+		// Sibling Update
+		leaf2.setRightSiblingId(leaf.getRightSiblingId());
+		leaf2.setLeftSiblingId(leaf.getId());
+		leaf.setRightSiblingId(leaf2.getId());
+
+		//Return
+		if (tupMid.getField(this.keyField).compare(Predicate.Op.LESS_THAN_OR_EQ, field)){
+			return leaf2;
+		}else{
+			return leaf;
+		}
 	}
 	
 	/**
@@ -362,6 +382,8 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, Field field) 
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
+		page.getParentId();
+
 		return null;
 	}
 	
