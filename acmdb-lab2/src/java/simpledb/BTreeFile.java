@@ -319,9 +319,7 @@ public class BTreeFile implements DbFile {
 		int rightSize = leaf.numSlots - leftSize;
 		Vector<Tuple> tupToRemove = new Vector<>();
 		for (int i=0;i<rightSize;++i){
-			if (!tupIter1.hasNext()){
-				throw new NotImplementedException();
-			}
+			if (!tupIter1.hasNext()){throw new NotImplementedException();}
 			Tuple tup = tupIter1.next();
 			tupToRemove.add(tup);
 			leaf2.insertTuple(tup);
@@ -331,13 +329,14 @@ public class BTreeFile implements DbFile {
 		BTreePageId parentPid = leaf.getParentId();
 		BTreeInternalPage parentPage = (BTreeInternalPage)
 			this.getPage(tid, dirtypages, parentPid, Permissions.READ_WRITE);
-		parentPage = splitInternalPage(tid, dirtypages, parentPage , field);
 		Tuple tupMid = tupToRemove.lastElement();
-		tupToRemove.add(tupMid);
 		BTreeEntry entry = new BTreeEntry(tupMid.getField(this.keyField) 
 			, leaf.getId(), leaf2.getId());
+		parentPage = splitInternalPage(tid, dirtypages, parentPage , entry.getKey());
 		parentPage.insertEntry(entry);
-		
+		leaf.setParentId(parentPage.getId());
+		leaf2.setParentId(parentPage.getId());
+
 		//Remove Tuple from leaf
 		for (Tuple tup2: tupToRemove){
 			leaf.deleteTuple(tup2);
@@ -377,6 +376,8 @@ public class BTreeFile implements DbFile {
 	 * @throws DbException
 	 * @throws IOException
 	 * @throws TransactionAbortedException
+	 * 
+	 * @see #splitInternalPage(TransactionId, HashMap, BTreeInternalPage, Field)
 	 */
 	protected BTreeInternalPage splitInternalPage(TransactionId tid, HashMap<PageId, Page> dirtypages, 
 			BTreeInternalPage page, Field field) 
@@ -384,24 +385,81 @@ public class BTreeFile implements DbFile {
 		// some code goes here
 		BTreePageId parentID = page.getParentId();
 		if (parentID.pgcateg()==BTreePageId.ROOT_PTR){
-
-		} else if (parentID.pgcateg()==BTreePageId.INTERNAL){
 			//if no need to split
-			if (page.getNumEmptySlots()==0){
-				return page;
+			if (page.getNumEmptySlots()>0){return page;}
+			
+			// Prepare for new page
+			BTreeInternalPage page2 = (BTreeInternalPage)
+				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+			int numLeft = page.numSlots/2;
+			int numRight = page.numSlots - numLeft -1;
+			Iterator<BTreeEntry> entryIter = page.iterator();
+			Iterator<BTreeEntry> entryIter2 = null;
+			for (int i=0; i< numRight; ++i){
+				if (entryIter.hasNext()){page2.insertEntry(entryIter.next());}
+				else{throw new NotImplementedException();}
 			}
 
+			// Prepare for new root
+			BTreeInternalPage newRoot = (BTreeInternalPage)
+				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+			if (!entryIter.hasNext()) throw new NotImplementedException();
+			BTreeEntry midEntry = entryIter.next();
+			BTreeEntry newMidEntry = new BTreeEntry(midEntry.getKey(), page.getId(), page2.getId());
+			BTreeRootPtrPage rootPtr = this.getRootPtrPage(tid, dirtypages);
+			newRoot.insertEntry(newMidEntry);
+			newRoot.setParentId(rootPtr.getId());
+			rootPtr.setRootId(newRoot.getId());
+			page.setParentId(newRoot.getId());
+			page2.setParentId(newRoot.getId());
+			
+			// Remove Entries in page
+			entryIter2 = page2.iterator();
+			while (entryIter2.hasNext()){page.deleteKeyAndRightChild(entryIter2.next());}
+			page.deleteKeyAndRightChild(newMidEntry);
+
+			//Return 
+			if (field.compare(Predicate.Op.LESS_THAN, midEntry.getKey())){return page;}
+			else{return page2;}
+		} else if (parentID.pgcateg()==BTreePageId.INTERNAL){
+			//if no need to split
+			if (page.getNumEmptySlots()>0){
+				return page;
+			}
 			//Prepare for new page
 			BTreeInternalPage page2 = (BTreeInternalPage)
 				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 			int numLeft = page.numSlots/2;
-			int numRight = page.numSlots-numLeft;
-			
+			int numRight = page.numSlots-numLeft-1;
+			Iterator<BTreeEntry> entryIter = page.reverseIterator();
+			Iterator<BTreeEntry> entryIter2 = null;
+			for (int i=0;i<numRight;++i){page2.insertEntry(entryIter.next());}
+
+			//Prepare for parent
+			BTreeEntry midEntryP = entryIter.next();
+			BTreeEntry midEntry = new BTreeEntry(midEntryP.getKey(), page.getId(), page2.getId());
+			BTreeInternalPage parent = (BTreeInternalPage)
+				this.getPage(tid, dirtypages, parentID, Permissions.READ_WRITE);
+			parent = splitInternalPage(tid, dirtypages, parent, midEntry.getKey());
+			parent.insertEntry(midEntry);
+			page.setParentId(parent.getId());
+			page2.setParentId(parent.getId());
+
+			//Remove from page
+			entryIter2 = page2.reverseIterator();
+			while (entryIter2.hasNext()){page.deleteKeyAndRightChild(entryIter2.next());}
+			page.deleteKeyAndRightChild(midEntryP);
+			//Internal has no Sibling
+			//Return
+			if (midEntry.getKey().compare(Predicate.Op.GREATER_THAN_OR_EQ, field)){
+				return page;
+			} else{
+				return page2;
+			}
 		} else{
 			throw new NotImplementedException();
 		}
 		// BTreeInternalPage 
-		
 		return null;
 	}
 	
