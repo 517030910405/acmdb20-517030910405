@@ -2,6 +2,7 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -39,6 +40,7 @@ public class BufferPool {
     private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
     private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
     private ConcurrentHashMap<PageId, Integer> indexInList = null;
+    private ConcurrentHashMap<PageId, Page> VictimCache = null;
     private int FirstID = 0;
     private Random rand = null;
 
@@ -81,6 +83,7 @@ public class BufferPool {
         rand = new Random();
         BufferPoolPageID = new ConcurrentHashMap<>();
         indexInList = new ConcurrentHashMap<>();
+        VictimCache = new ConcurrentHashMap<>();
     }
     
     public static int getPageSize() {
@@ -118,6 +121,9 @@ public class BufferPool {
         ++cnt;
         if (pid == null) throw new DbException("pid is null");
         Page ans = Buffer_Pool_RAM.get(pid);
+        if (ans == null){
+            ans = VictimCache.get(pid);
+        }
         if (ans!=null) {
             int index = indexInList.get(pid);
             indexInList.remove(pid);
@@ -127,9 +133,6 @@ public class BufferPool {
             return ans;
         }
         // new page
-        // System.out.println("Notice! by Jiasen ");
-        // Random rnd = new Random();
-        // int evict = java.util.Random;
         while (Buffer_Pool_RAM.size()>=this.numOfPages){
             try{
                 EvictNext();
@@ -209,24 +212,21 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HashMap<PageId,Page> dirtypages = new HashMap<>();
         if (Database.getCatalog().getDatabaseFile(tableId).getClass()==BTreeFile.class){
             BTreeFile file = (BTreeFile)Database.getCatalog().getDatabaseFile(tableId);
             Field field = t.getField(file.keyField());
-            BTreeLeafPage leaf = file.findLeafPage(tid, 
-                file.getRootPtrPage(tid, dirtypages).getRootId(),
-                Permissions.READ_WRITE, field);
-            // System.out.println(leaf.View()+" + "+t);
-            leaf = file.splitLeafPage(tid, dirtypages, leaf, field);
-            // if (leaf.iterator().hasNext()){
-            //     if (!(leaf.iterator().next().getField(file.keyField()).compare(Predicate.Op.LESS_THAN_OR_EQ, field))){
-            //         throw new NotImplementedException();
-            //     }
-            //     if (!(leaf.reverseIterator().next().getField(file.keyField()).compare(Predicate.Op.GREATER_THAN_OR_EQ, field))){
-            //         throw new NotImplementedException();
-            //     }
-            // }
-            leaf.insertTuple(t);
+            ArrayList<Page> dpage = 
+            file.insertTuple(tid, t);
+            for (Page page: dpage){
+                //TODO: flush? 
+                if (!this.Buffer_Pool_RAM.contains(page.getId())){
+                    if (VictimCache.containsKey(page.getId())){
+                        file.writePage(page);
+                        VictimCache.remove(page.getId());
+                    }
+                }
+            }
+            return;
         }
     }
 
@@ -286,7 +286,8 @@ public class BufferPool {
         }
         DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         if (page.isDirty()!=null){
-            file.writePage(page);
+            // file.writePage(page);
+            this.VictimCache.put(pid, page);
             throw new NotImplementedException();
         }
         this.Buffer_Pool_RAM.remove(pid);

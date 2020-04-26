@@ -194,29 +194,30 @@ public class BTreeFile implements DbFile {
 	 * @param dirtypages - the list of dirty pages which should be updated with all new dirty pages
 	 * @param pid - the current page being searched
 	 * @param perm - the permissions with which to lock the leaf page
+	 * @param perm2 - if it is read write then perm is read write , and update the parent ID
 	 * @param f - the field to search for
 	 * @return the left-most leaf page possibly containing the key field f
 	 * 
 	 */
 	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages,
-			BTreePageId pid, Permissions perm, Field f, BTreePageId parentid) 
+			BTreePageId pid, Permissions perm, Field f, BTreePageId parentid, Permissions perm2) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
-		// Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
 		Page now_page = null;
 		if (pid.pgcateg()==BTreePageId.LEAF){
 			now_page = this.getPage(tid, dirtypages,  pid, perm);
 		} else{
-			now_page = this.getPage(tid, dirtypages,  pid, Permissions.READ_ONLY);
+			now_page = this.getPage(tid, dirtypages,  pid, perm2);
 		}
 		if (!(now_page instanceof BTreePage)){
 			// System.out.println("+"+now_page+"+");
 			throw new NotImplementedException();
 		}
 		if (now_page.getClass()==BTreeLeafPage.class){
-
 			BTreeLeafPage leaf1 = (BTreeLeafPage) now_page;
+			if (perm2.equals(Permissions.READ_WRITE))
 			leaf1.setParentId(parentid);
+			// System.out.println(f+","+leaf1.View());
 			if (f==null) return leaf1;
 			Iterator<Tuple> tupIter1 =  leaf1.reverseIterator();
 			if (!tupIter1.hasNext()) {
@@ -246,19 +247,24 @@ public class BTreeFile implements DbFile {
 				throw new NotImplementedException();
 			}
 			BTreeInternalPage subRoot = (BTreeInternalPage)now_page;
+			if (perm2.equals(Permissions.READ_WRITE)) 
+			subRoot.setParentId(parentid);
 			Iterator<BTreeEntry> entryIter =  subRoot.iterator();
 			BTreeEntry entry = null;
+			BTreeLeafPage ans = null;
+
 			while (entryIter.hasNext()){
 				entry = entryIter.next();
-				if (f==null || f.compare(Predicate.Op.LESS_THAN_OR_EQ, entry.getKey())){
-					BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f, pid);
-					return ans;
+				if (ans==null && ( f==null || f.compare(Predicate.Op.LESS_THAN_OR_EQ, entry.getKey()) )){
+					ans = findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f, pid, perm2);
+				} else if (f != null && f.compare(Predicate.Op.EQUALS, entry.getKey())){
+					findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f, pid, perm2);
 				}
 			}
-			BTreeLeafPage ans = findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f, pid);
+			if (ans!=null) return ans;
+			ans = findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f, pid, perm2);
 			return ans;
 		}
-		// return null;
 	}
 	/**
 	 * Recursive function which finds and locks the leaf page in the B+ tree corresponding to
@@ -277,12 +283,12 @@ public class BTreeFile implements DbFile {
 	 * 
 	 */
 	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages,
-			BTreePageId pid, Permissions perm, Field f) 
+			BTreePageId pid, Permissions perm, Field f, Permissions perm2) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
 		// Page now_page = Database.getBufferPool().getPage(tid, pid, perm);
 		try{
-			return findLeafPage(tid, dirtypages, pid, perm, f, getRootPtrPage(tid, dirtypages).getId() );
+			return findLeafPage(tid, dirtypages, pid, perm, f, getRootPtrPage(tid, dirtypages).getId(), perm2);
 		} catch (IOException e){
 			throw new NotImplementedException();
 		}
@@ -304,7 +310,7 @@ public class BTreeFile implements DbFile {
 			Field f) 
 					throws DbException, TransactionAbortedException {
 		// System.out.println(pid);
-		return findLeafPage(tid, new HashMap<PageId, Page>(), pid, perm, f);
+		return findLeafPage(tid, new HashMap<PageId, Page>(), pid, perm, f, Permissions.READ_ONLY);
 	}
 
 	/**
@@ -392,8 +398,8 @@ public class BTreeFile implements DbFile {
 
 
 		} else{
-			// System.out.println("\nLeaf\n");
 			// No need to split
+			// System.out.println("\nLeaf\n");
 			if (leaf.getNumEmptySlots()>0){return leaf;}
 			// System.err.println("Leaf Internal");
 
@@ -520,6 +526,7 @@ public class BTreeFile implements DbFile {
 			rootPtr.setRootId(newRoot.getId());
 			page.setParentId(newRoot.getId());
 			page2.setParentId(newRoot.getId());
+			this.updateParentPointers(tid, dirtypages, page2);
 			// System.out.println(page.View());
 			// System.out.println(midEntry+" "+field);
 			// System.out.println(page2.View());
@@ -569,6 +576,7 @@ public class BTreeFile implements DbFile {
 			parent.insertEntry(midEntry);
 			page.setParentId(parent.getId());
 			page2.setParentId(parent.getId());
+			this.updateParentPointers(tid, dirtypages, page2);
 			// System.out.println(page.View());
 			// System.out.println(midEntry+" II "+field);
 			// System.out.println(page2.View());
@@ -751,7 +759,8 @@ public class BTreeFile implements DbFile {
 
 		// find and lock the left-most leaf page corresponding to the key field,
 		// and split the leaf page if there are no more slots available
-		BTreeLeafPage leafPage = findLeafPage(tid, dirtypages, rootId, Permissions.READ_WRITE, t.getField(keyField));
+		BTreeLeafPage leafPage = findLeafPage(tid, dirtypages, rootId, Permissions.READ_WRITE,
+				t.getField(keyField), Permissions.READ_ONLY);
 		if(leafPage.getNumEmptySlots() == 0) {
 			leafPage = splitLeafPage(tid, dirtypages, leafPage, t.getField(keyField));	
 		}
@@ -879,10 +888,73 @@ public class BTreeFile implements DbFile {
 	protected void stealFromLeafPage(BTreeLeafPage page, BTreeLeafPage sibling,
 			BTreeInternalPage parent, BTreeEntry entry, boolean isRightSibling) throws DbException {
 		// some code goes here
-        //
-        // Move some of the tuples from the sibling to the page so
+		
+		// Move some of the tuples from the sibling to the page so
 		// that the tuples are evenly distributed. Be sure to update
 		// the corresponding parent entry.
+		{
+			// This is to use lazy parent ID 
+			// // TransactionId tid = new TransactionId();
+			// // HashMap<PageId, Page> dirtypages = new HashMap<>();
+			// // try{
+			// // 	this.findLeafPage(tid, dirtypages, this.getRootPtrPage(tid, dirtypages).getRootId() , 
+			// // 	Permissions.READ_WRITE, page.iterator().next().getField(keyField()), Permissions.READ_WRITE);
+			// // 	this.findLeafPage(tid, dirtypages, this.getRootPtrPage(tid, dirtypages).getRootId() , 
+			// // 	Permissions.READ_WRITE, page.iterator().next().getField(keyField()), Permissions.READ_WRITE);
+			// // } catch(Exception e){
+			// // 	throw new NotImplementedException();
+			// // }
+		}
+
+		if (isRightSibling){
+			if (sibling.getNumTuples()<2){
+				throw new NotImplementedException();
+			}
+			Iterator<Tuple> iter2 = sibling.iterator();
+			Vector<Tuple> removeTup = new Vector<>();
+			int turns = (sibling.getNumTuples()-page.getNumTuples())/2;
+			for (int i=0;i<turns+1;++i){
+				removeTup.add(iter2.next());
+			}			
+			for (int i=0;i<turns;++i){
+				Tuple steal = removeTup.get(i);
+				// Tuple stealNext = removeTup.get(i+1);
+				sibling.deleteTuple(steal);
+				page.insertTuple(steal);
+			}
+			{
+				int i = turns-1;
+				// Tuple steal = removeTup.get(i);
+				Tuple stealNext = removeTup.get(i+1);
+				entry.setKey(stealNext.getField(keyField));
+				parent.updateEntry(entry);
+			}
+		} else{
+			if (sibling.getNumTuples()<2){
+				throw new NotImplementedException();
+			}
+			Iterator<Tuple> iter2 = sibling.reverseIterator();
+			Vector<Tuple> removeTup = new Vector<>();
+			int turns = (sibling.getNumTuples()-page.getNumTuples())/2;
+			for (int i=0;i<turns+1;++i){
+				removeTup.add(iter2.next());
+			}
+			// Tuple stealNext = iter2.next();
+			for (int i=0;i<turns;++i){
+				Tuple steal = removeTup.get(i);
+				// Tuple stealNext = removeTup.get(i+1);
+				sibling.deleteTuple(steal);
+				page.insertTuple(steal);
+			}
+			{
+				int i = turns-1;
+				Tuple steal = removeTup.get(i);
+				// Tuple stealNext = removeTup.get(i+1);
+				entry.setKey(steal.getField(keyField));
+				parent.updateEntry(entry);
+			}
+		}
+
 	}
 
 	/**
@@ -959,6 +1031,21 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, BTreeInternalPage leftSibling, BTreeInternalPage parent,
 			BTreeEntry parentEntry) throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
+		while (page.getNumEntries()+1<leftSibling.getNumEntries()){
+			Iterator<BTreeEntry> iter1 = page.iterator();
+			Iterator<BTreeEntry> iter2 = leftSibling.reverseIterator();
+			BTreeEntry steal = iter2.next();
+			BTreeEntry oriEntry = iter1.next();
+			Field f1,f2,f3;
+			f1=oriEntry.getKey();
+			f2=parentEntry.getKey();
+			f3=steal.getKey();
+			leftSibling.deleteKeyAndRightChild(steal);
+			page.insertEntry(new BTreeEntry(f2, steal.getRightChild(), oriEntry.getLeftChild()));
+			parentEntry.setKey(f3);
+			parent.updateEntry(parentEntry);
+			this.updateParentPointer(tid, dirtypages, page.getId(), steal.getRightChild());
+		}
 	}
 	
 	/**
@@ -987,6 +1074,21 @@ public class BTreeFile implements DbFile {
 		// that the entries are evenly distributed. Be sure to update
 		// the corresponding parent entry. Be sure to update the parent
 		// pointers of all children in the entries that were moved.
+		while (page.getNumEntries()+1<rightSibling.getNumEntries()){
+			Iterator<BTreeEntry> iter1 = page.reverseIterator();
+			Iterator<BTreeEntry> iter2 = rightSibling.iterator();
+			BTreeEntry steal = iter2.next();
+			BTreeEntry oriEntry = iter1.next();
+			Field f1,f2,f3;
+			f1=oriEntry.getKey();
+			f2=parentEntry.getKey();
+			f3=steal.getKey();
+			rightSibling.deleteKeyAndLeftChild(steal);
+			page.insertEntry(new BTreeEntry(f2, oriEntry.getRightChild(), steal.getLeftChild()));
+			parentEntry.setKey(f3);
+			parent.updateEntry(parentEntry);
+			this.updateParentPointer(tid, dirtypages, page.getId(), steal.getLeftChild());
+		}
 	}
 	
 	/**
@@ -1010,13 +1112,26 @@ public class BTreeFile implements DbFile {
 	protected void mergeLeafPages(TransactionId tid, HashMap<PageId, Page> dirtypages, 
 			BTreeLeafPage leftPage, BTreeLeafPage rightPage, BTreeInternalPage parent, BTreeEntry parentEntry) 
 					throws DbException, IOException, TransactionAbortedException {
-
 		// some code goes here
         //
 		// Move all the tuples from the right page to the left page, update
 		// the sibling pointers, and make the right page available for reuse.
 		// Delete the entry in the parent corresponding to the two pages that are merging -
 		// deleteParentEntry() will be useful here
+		Vector<Tuple> removeTuples = new Vector<>();
+		Iterator<Tuple> iter1;
+		Iterator<Tuple> iter2;
+		iter2 = rightPage.iterator();
+		while (iter2.hasNext()){
+			removeTuples.add(iter2.next());
+		}
+		for (Tuple tup:removeTuples){
+			rightPage.deleteTuple(tup);
+			leftPage.insertTuple(tup);
+		}
+		leftPage.setRightSiblingId(rightPage.getRightSiblingId());
+		deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
+		setEmptyPage(tid, dirtypages, rightPage.getId().pageNumber());
 	}
 
 	/**
@@ -1050,6 +1165,24 @@ public class BTreeFile implements DbFile {
 		// and make the right page available for reuse
 		// Delete the entry in the parent corresponding to the two pages that are merging -
 		// deleteParentEntry() will be useful here
+		Vector<BTreeEntry> removeEntry = new Vector<>();
+		Iterator<BTreeEntry> iter1;
+		Iterator<BTreeEntry> iter2;
+		iter1 = leftPage.reverseIterator();
+		iter2 = rightPage.iterator();
+		while (iter2.hasNext()){
+			removeEntry.add(iter2.next());
+		}
+		BTreeEntry midEntry = new BTreeEntry(parentEntry.getKey(), iter1.next().getRightChild(),
+				removeEntry.firstElement().getLeftChild());
+		deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
+		leftPage.insertEntry(midEntry);
+		for (BTreeEntry entry: removeEntry){
+			rightPage.deleteKeyAndLeftChild(entry);
+			leftPage.insertEntry(entry);
+		}
+		updateParentPointers(tid, dirtypages, leftPage);
+		setEmptyPage(tid, dirtypages, rightPage.getId().pageNumber());
 	}
 	
 	/**

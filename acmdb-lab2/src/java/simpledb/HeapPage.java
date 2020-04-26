@@ -12,6 +12,8 @@ import java.io.*;
  *
  */
 public class HeapPage implements Page {
+	protected volatile boolean dirty = false;
+	protected volatile TransactionId dirtier = null;
 
     final HeapPageId pid;
     final TupleDesc td;
@@ -269,7 +271,9 @@ public class HeapPage implements Page {
      */
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
-    	// not necessary for lab1
+        // not necessary for lab1
+        this.dirty = dirty;
+		if (dirty) this.dirtier = tid;
     }
 
     /**
@@ -278,7 +282,10 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // some code goes here
 	    // Not necessary for lab1
-        return null;      
+		if (this.dirty)
+			return this.dirtier;
+		else
+			return null;
     }
 
     /**
