@@ -211,7 +211,7 @@ public class BTreeFile implements DbFile {
 		}
 		if (!(now_page instanceof BTreePage)){
 			// System.out.println("+"+now_page+"+");
-			throw new NotImplementedException();
+			// throw new NotImplementedException();
 		}
 		if (now_page.getClass()==BTreeLeafPage.class){
 			BTreeLeafPage leaf1 = (BTreeLeafPage) now_page;
@@ -244,7 +244,7 @@ public class BTreeFile implements DbFile {
 		}
 		else{
 			if (now_page.getClass()!=BTreeInternalPage.class){
-				throw new NotImplementedException();
+				// throw new NotImplementedException();
 			}
 			BTreeInternalPage subRoot = (BTreeInternalPage)now_page;
 			if (perm2.equals(Permissions.READ_WRITE)) 
@@ -291,7 +291,8 @@ public class BTreeFile implements DbFile {
 		try{
 			return findLeafPage(tid, dirtypages, pid, perm, f, getRootPtrPage(tid, dirtypages).getId(), perm2);
 		} catch (IOException e){
-			throw new NotImplementedException();
+			// throw new NotImplementedException();
+			return null;
 		}
 	}
 	
@@ -361,7 +362,9 @@ public class BTreeFile implements DbFile {
 			int rightSize = leaf.numSlots - leftSize;
 			Vector<Tuple> tupToRemove = new Vector<>();
 			for (int i=0;i<rightSize;++i){
-				if (!tupIter1.hasNext()){throw new NotImplementedException();}
+				if (!tupIter1.hasNext()){
+					// throw new NotImplementedException();
+				}
 				Tuple tup = tupIter1.next();
 				tupToRemove.add(tup);
 			}
@@ -418,7 +421,9 @@ public class BTreeFile implements DbFile {
 			int rightSize = leaf.numSlots - leftSize;
 			Vector<Tuple> tupToRemove = new Vector<>();
 			for (int i=0;i<rightSize;++i){
-				if (!tupIter1.hasNext()){throw new NotImplementedException();}
+				if (!tupIter1.hasNext()){
+					// throw new NotImplementedException();
+				}
 				Tuple tup = tupIter1.next();
 				tupToRemove.add(tup);
 			}
@@ -518,7 +523,7 @@ public class BTreeFile implements DbFile {
 			Vector<BTreeEntry> entryToRomove = new Vector<>();
 			for (int i=0; i< numRight; ++i){
 				if (entryIter.hasNext()){entryToRomove.add(entryIter.next());}
-				else{throw new NotImplementedException();}
+				// else{throw new NotImplementedException();}
 			}
 			for (BTreeEntry entry: entryToRomove){
 				page.deleteKeyAndRightChild(entry);
@@ -527,7 +532,7 @@ public class BTreeFile implements DbFile {
 			// Prepare for new root
 			BTreeInternalPage newRoot = (BTreeInternalPage)
 				this.getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
-			if (!entryIter.hasNext()) throw new NotImplementedException();
+			// if (!entryIter.hasNext()) throw new NotImplementedException();
 			BTreeEntry midEntry = entryIter.next();
 			page.deleteKeyAndRightChild(midEntry);
 			BTreeEntry newMidEntry = new BTreeEntry(midEntry.getKey(), page.getId(), page2.getId());
@@ -603,7 +608,8 @@ public class BTreeFile implements DbFile {
 				return page2;
 			}
 		} else{
-			throw new NotImplementedException();
+			// throw new NotImplementedException();
+			return null;
 		}
 		// BTreeInternalPage 
 		// return null;
@@ -919,7 +925,7 @@ public class BTreeFile implements DbFile {
 
 		if (isRightSibling){
 			if (sibling.getNumTuples()<2){
-				throw new NotImplementedException();
+				// throw new NotImplementedException();
 			}
 			Iterator<Tuple> iter2 = sibling.iterator();
 			Vector<Tuple> removeTup = new Vector<>();
@@ -942,7 +948,7 @@ public class BTreeFile implements DbFile {
 			}
 		} else{
 			if (sibling.getNumTuples()<2){
-				throw new NotImplementedException();
+				// throw new NotImplementedException();
 			}
 			Iterator<Tuple> iter2 = sibling.reverseIterator();
 			Vector<Tuple> removeTup = new Vector<>();

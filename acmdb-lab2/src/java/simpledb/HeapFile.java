@@ -102,7 +102,7 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
-        throw new NotImplementedException();
+        // throw new NotImplementedException();
     }
 
     /**
@@ -122,8 +122,8 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        throw new NotImplementedException();
-        // return null;
+        // throw new NotImplementedException();
+        return null;
         // not necessary for lab1
     }
 
@@ -131,8 +131,8 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
         // some code goes here
-        throw new NotImplementedException();
-        // return null;
+        // throw new NotImplementedException();
+        return null;
         // not necessary for lab1
     }
 
