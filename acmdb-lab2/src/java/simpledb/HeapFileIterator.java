@@ -1,6 +1,6 @@
 package simpledb;
 import java.util.NoSuchElementException;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+// import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * disposed
@@ -22,7 +22,8 @@ public class HeapFileIterator implements DbFileIterator {
 
     /** @return true if there are more tuples available, false if no more tuples or iterator isn't open. */
     public boolean hasNext()throws DbException, TransactionAbortedException{
-        throw new NotImplementedException();
+        // AssertionError(1==2);
+        throw new AssertionError();
     }
 
     /**
@@ -33,7 +34,7 @@ public class HeapFileIterator implements DbFileIterator {
      * @throws NoSuchElementException if there are no more tuples
      */
     public Tuple next()throws DbException, TransactionAbortedException, NoSuchElementException{
-        throw new NotImplementedException();
+        throw new AssertionError();
     }
 
     /**

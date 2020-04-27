@@ -145,7 +145,7 @@ public class BufferPool {
                 try{
                     EvictNext();
                 } catch(IOException e){
-                    // throw new NotImplementedException();
+                    throw new AssertionError();
                 }
             }
             // System.out.println(Buffer_Pool_RAM.size()+" , "+VictimCache.size()+", "+this.numOfPages);
@@ -171,7 +171,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new NotImplementedException();
+        // throw new AssertionError();
     }
 
     /**
@@ -182,15 +182,15 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new NotImplementedException();
+        // throw new AssertionError();
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new NotImplementedException();
-        return false;
+        // throw new AssertionError();
+        // return false;
     }
 
     /**
@@ -204,7 +204,7 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new NotImplementedException();
+        // throw new AssertionError();
     }
 
     /**
@@ -242,7 +242,7 @@ public class BufferPool {
             }
             return;
         } else{
-            // throw new NotImplementedException();
+            throw new AssertionError();
         }
     }
 
@@ -276,7 +276,7 @@ public class BufferPool {
                 }
             }
         } else {
-            // throw new NotImplementedException();
+            throw new AssertionError();
         }
     }
 
@@ -317,7 +317,7 @@ public class BufferPool {
             Page page = this.VictimCache.get(pid);
             if (page!=null){
                 this.VictimCache.remove(pid);
-                // throw new NotImplementedException();
+                throw new AssertionError();
             }
         }
         
@@ -338,7 +338,7 @@ public class BufferPool {
         if (page.isDirty()!=null){
             // file.writePage(page);
             this.VictimCache.put(pid, page);
-            // throw new NotImplementedException();
+            throw new AssertionError();
         }
         this.Buffer_Pool_RAM.remove(pid);
         return;
@@ -349,7 +349,7 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new NotImplementedException();
+        throw new AssertionError();
 
     }
 
@@ -360,7 +360,7 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
-        // throw new NotImplementedException();
+        throw new AssertionError();
     }
 
 }
