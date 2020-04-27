@@ -18,11 +18,11 @@ public class Tuple implements Serializable {
     private static final long serialVersionUID = 1L;
     private TupleDesc schema = null;
     private RecordId recordId = null;
-    private Field[] tuple_record = null;
+    private Vector<Field> tuple_record = null;
     
     private void tuple_record_push_n_times(int n){
         for (int i=0;i<n;++i){
-            tuple_record[i] = null;
+            tuple_record.add(null);
         }
     }
 
@@ -35,7 +35,7 @@ public class Tuple implements Serializable {
      */
     public Tuple(TupleDesc td) {
         // some code goes here
-        tuple_record = new Field[td.numFields()];
+        tuple_record = new Vector<>(td.numFields(),1);
         tuple_record_push_n_times(td.numFields());
         schema = td;
         // assert record.get(0)==null;
@@ -79,8 +79,7 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
-        // tuple_record.set(i, f);
-        tuple_record[i] =f;
+        tuple_record.set(i, f);
     }
 
     /**
@@ -91,8 +90,7 @@ public class Tuple implements Serializable {
      */
     public Field getField(int i) {
         // some code goes here
-        // return tuple_record.get(i);
-        return tuple_record[i];
+        return tuple_record.get(i);
     }
 
     /**
@@ -116,24 +114,7 @@ public class Tuple implements Serializable {
     public Iterator<Field> fields()
     {
         // some code goes here
-        return new Iterator<Field>() {
-            private int pos = 0;
-            @Override
-            public boolean hasNext() {
-                // TODO Auto-generated method stub
-                return pos<tuple_record.length;
-            }
-            @Override
-            public Field next() {
-                // TODO Auto-generated method stub
-                return tuple_record[pos++];
-            }
-            @Override
-            public int hashCode() {
-                // TODO Auto-generated method stub
-                return tuple_record.hashCode()*97+pos*17;
-            }
-        };
+        return tuple_record.iterator();
     }
 
     /**
@@ -142,7 +123,7 @@ public class Tuple implements Serializable {
     public void resetTupleDesc(TupleDesc td)
     {
         // some code goes here
-        tuple_record = new Field[td.numFields()];
+        tuple_record = new Vector<>();
         tuple_record_push_n_times(td.numFields());
         recordId = null;
         schema = td;

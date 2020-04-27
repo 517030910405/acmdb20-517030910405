@@ -186,28 +186,28 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 	public void testRedistributeInternalPages() throws Exception {
 		// This should create a B+ tree with two nodes in the second tier
 		// and 602 nodes in the third tier		
-		System.out.println("proint5");
+		// System.out.println("proint5");
 		BTreeFile bf = BTreeUtility.createRandomBTreeFile(2, 302204,
 				null, null, 0);
-		System.out.println("proint7");
+		// System.out.println("proint7");
 		BTreeChecker.checkRep(bf, tid, new HashMap<PageId, Page>(), true);
-		System.out.println("proint6");
+		// System.out.println("proint6");
 		Database.resetBufferPool(500); // we need more pages for this test
 
 		BTreeRootPtrPage rootPtr = (BTreeRootPtrPage) Database.getBufferPool().getPage(
 				tid, BTreeRootPtrPage.getId(bf.getId()), Permissions.READ_ONLY);
 		BTreeInternalPage root = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootPtr.getRootId(), Permissions.READ_ONLY);
-		System.out.println("proint1");
+		// System.out.println("proint1");
 		assertEquals(502, root.getNumEmptySlots());
-		System.out.println("proint2");
+		// System.out.println("proint2");
 
 		BTreeEntry rootEntry = root.iterator().next();
 		BTreeInternalPage leftChild = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootEntry.getLeftChild(), Permissions.READ_ONLY);
 		BTreeInternalPage rightChild = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootEntry.getRightChild(), Permissions.READ_ONLY);
-		System.out.println("proint3");
+		// System.out.println("proint3");
 
 		// delete from the right child to test redistribution from the left
 		Iterator<BTreeEntry> it = rightChild.iterator();

@@ -446,6 +446,11 @@ simpledb.BTreeEntry
 java.lang.System
 simpledb.Predicate
 simpledb.BufferPool
+||:simpledb.Tuple$1
+java.lang.Object
+java.util.Iterator
+simpledb.Tuple
+simpledb.Tuple$1
 ||:simpledb.Type
 simpledb.Type$2
 java.io.Serializable
@@ -1080,13 +1085,11 @@ simpledb.SeqScan
 simpledb.DbException
 ||:simpledb.systemtest.BTreeFileDeleteTest
 simpledb.Permissions
-java.lang.System
 simpledb.Field
 simpledb.BTreePageId
 simpledb.Predicate$Op
 simpledb.RecordId
 simpledb.BTreeInternalPage
-java.io.PrintStream
 simpledb.BufferPool
 simpledb.systemtest.BTreeFileDeleteTest
 simpledb.TransactionId
@@ -1400,10 +1403,10 @@ simpledb.PageId
 ||:simpledb.Tuple
 java.lang.Object
 java.io.Serializable
-java.util.Vector
 simpledb.Field
 simpledb.TupleDesc
 simpledb.Tuple
+simpledb.Tuple$1
 ||:simpledb.systemtest.BTreeScanTest$TupleComparator
 java.lang.Object
 java.util.ArrayList
