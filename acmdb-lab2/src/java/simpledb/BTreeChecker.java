@@ -34,6 +34,9 @@ public class BTreeChecker {
         static SubtreeSummary checkAndMerge(SubtreeSummary accleft, SubtreeSummary right) {
             assert(accleft.depth == right.depth);
             assert(accleft.ptrRight.equals(right.leftmostId));
+            // System.out.println(accleft.);
+            // System.out.println(accleft.rightmostId);
+            // System.out.println(right.ptrLeft);            
             assert(accleft.rightmostId.equals(right.ptrLeft));
 
             SubtreeSummary ans = new SubtreeSummary();
@@ -70,6 +73,20 @@ public class BTreeChecker {
             assert (res.ptrRight == null);
         }
     }
+    public static void checkRepli(BTreeFile bt, TransactionId tid, HashMap<PageId, Page> dirtypages,
+                                boolean checkOccupancy) throws
+            DbException, IOException, TransactionAbortedException {
+        BTreeRootPtrPage rtptr = bt.getRootPtrPage(tid, dirtypages);
+        
+        if (rtptr.getRootId() == null) { // non existent root is a legal state.
+            return;
+        } else {
+            SubtreeSummary res = checkSubTree(bt, tid, dirtypages,
+                    rtptr.getRootId(), null, null, rtptr.getId(), checkOccupancy, 0);
+            assert (res.ptrLeft == null);
+            assert (res.ptrRight == null);
+        }
+    }
 
     static SubtreeSummary checkSubTree(BTreeFile bt, TransactionId tid, HashMap<PageId, Page> dirtypages,
                                        BTreePageId pageId, Field lowerBound, Field upperBound,
@@ -80,11 +97,13 @@ public class BTreeChecker {
 
         if (page.getId().pgcateg() == BTreePageId.LEAF) {
             BTreeLeafPage bpage = (BTreeLeafPage) page;
+            // System.out.println(bpage.View()+"\n\n");
             bpage.checkRep(bt.keyField(), lowerBound, upperBound, checkOccupancy, depth);
             return new SubtreeSummary(bpage, depth);
         } else if (page.getId().pgcateg() == BTreePageId.INTERNAL) {
 
             BTreeInternalPage ipage = (BTreeInternalPage) page;
+            // System.out.println(ipage.View()+"\n\n");
             ipage.checkRep(lowerBound, upperBound, checkOccupancy, depth);
 
             SubtreeSummary acc = null;

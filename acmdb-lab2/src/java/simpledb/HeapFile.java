@@ -6,6 +6,8 @@ import java.util.*;
 
 import org.omg.CORBA.portable.UnknownException;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 /**
  * HeapFile is an implementation of a DbFile that stores a collection of tuples
  * in no particular order. Tuples are stored on pages, each of which is a fixed
@@ -100,6 +102,7 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
+        throw new NotImplementedException();
     }
 
     /**
@@ -119,7 +122,8 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        return null;
+        throw new NotImplementedException();
+        // return null;
         // not necessary for lab1
     }
 
@@ -127,7 +131,8 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
         // some code goes here
-        return null;
+        throw new NotImplementedException();
+        // return null;
         // not necessary for lab1
     }
 

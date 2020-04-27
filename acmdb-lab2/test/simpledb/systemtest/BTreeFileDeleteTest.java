@@ -1,6 +1,7 @@
 package simpledb.systemtest;
 
 import simpledb.systemtest.SimpleDbTestBase;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import simpledb.Predicate.Op;
 import simpledb.*;
 
@@ -166,7 +167,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 			it.rewind();
 		}
 		it.close();
-
+		BTreeChecker.checkRep(threeLeafPageFile, tid, new HashMap<PageId, Page>(), true);
 		// now there should be 2 leaf pages, 1 internal page, 1 unused leaf page, 1 header page
 		assertEquals(5, threeLeafPageFile.numPages());
 
@@ -175,33 +176,38 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 			Database.getBufferPool().insertTuple(tid, threeLeafPageFile.getId(),
 					BTreeUtility.getBTreeTuple(i, 2));
 		}
-
+		
 		// now there should be 3 leaf pages, 1 internal page, and 1 header page
 		assertEquals(5, threeLeafPageFile.numPages());
 		BTreeChecker.checkRep(threeLeafPageFile, tid, new HashMap<PageId, Page>(), true);
 	}
-
+	
 	@Test
 	public void testRedistributeInternalPages() throws Exception {
 		// This should create a B+ tree with two nodes in the second tier
-		// and 602 nodes in the third tier
+		// and 602 nodes in the third tier		
+		System.out.println("proint5");
 		BTreeFile bf = BTreeUtility.createRandomBTreeFile(2, 302204,
 				null, null, 0);
+		System.out.println("proint7");
 		BTreeChecker.checkRep(bf, tid, new HashMap<PageId, Page>(), true);
-
+		System.out.println("proint6");
 		Database.resetBufferPool(500); // we need more pages for this test
 
 		BTreeRootPtrPage rootPtr = (BTreeRootPtrPage) Database.getBufferPool().getPage(
 				tid, BTreeRootPtrPage.getId(bf.getId()), Permissions.READ_ONLY);
 		BTreeInternalPage root = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootPtr.getRootId(), Permissions.READ_ONLY);
+		System.out.println("proint1");
 		assertEquals(502, root.getNumEmptySlots());
+		System.out.println("proint2");
 
 		BTreeEntry rootEntry = root.iterator().next();
 		BTreeInternalPage leftChild = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootEntry.getLeftChild(), Permissions.READ_ONLY);
 		BTreeInternalPage rightChild = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootEntry.getRightChild(), Permissions.READ_ONLY);
+		System.out.println("proint3");
 
 		// delete from the right child to test redistribution from the left
 		Iterator<BTreeEntry> it = rightChild.iterator();
@@ -256,7 +262,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		BTreeFile bigFile = BTreeUtility.createRandomBTreeFile(2, 31125,
 				null, null, 0);
 
-		BTreeChecker.checkRep(bigFile, tid, new HashMap<PageId, Page>(), true);
+		// BTreeChecker.checkRep(bigFile, tid, new HashMap<PageId, Page>(), true);
 
 		Database.resetBufferPool(500); // we need more pages for this test
 
@@ -274,12 +280,15 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 
 		// Delete tuples causing leaf pages to merge until the first internal page 
 		// gets to minimum occupancy
+		
 		DbFileIterator it = bigFile.iterator(tid);
 		it.open();
 		int count = 0;
 		Database.getBufferPool().deleteTuple(tid, it.next());
 		it.rewind();
 		while(count < 62) {
+			// System.out.println(count);
+			BTreeChecker.checkRepli(bigFile, tid, new HashMap<PageId, Page>(), true);
 			assertEquals(count, leftChild.getNumEmptySlots());
 			for(int i = 0; i < 124; ++i) {
 				Database.getBufferPool().deleteTuple(tid, it.next());

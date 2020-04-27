@@ -35,7 +35,7 @@ public class Tuple implements Serializable {
      */
     public Tuple(TupleDesc td) {
         // some code goes here
-        tuple_record = new Vector<>();
+        tuple_record = new Vector<>(td.numFields(),1);
         tuple_record_push_n_times(td.numFields());
         schema = td;
         // assert record.get(0)==null;

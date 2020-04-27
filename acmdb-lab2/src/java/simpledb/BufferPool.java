@@ -71,6 +71,13 @@ public class BufferPool {
         flushPage(EvPageID);
     }
 
+    private synchronized void EvictVictime(PageId pageid)throws IOException{
+        Page page=VictimCache.get(pageid);
+        if (page!=null){
+            Database.getCatalog().getDatabaseFile(pageid.getTableId()).writePage(page);
+            VictimCache.remove(pageid);
+        }
+    }
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -133,12 +140,15 @@ public class BufferPool {
             return ans;
         }
         // new page
-        while (Buffer_Pool_RAM.size()>=this.numOfPages){
-            try{
-                EvictNext();
-            } catch(IOException e){
-                throw new NotImplementedException();
+        if (Buffer_Pool_RAM.size()+VictimCache.size()>=this.numOfPages&&Buffer_Pool_RAM.size()>0){
+            while (Buffer_Pool_RAM.size()+VictimCache.size()>=this.numOfPages&&Buffer_Pool_RAM.size()>0){
+                try{
+                    EvictNext();
+                } catch(IOException e){
+                    throw new NotImplementedException();
+                }
             }
+            // System.out.println(Buffer_Pool_RAM.size()+" , "+VictimCache.size()+", "+this.numOfPages);
         }
         ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
         Buffer_Pool_RAM.put(pid, ans);
@@ -161,6 +171,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
+        // throw new NotImplementedException();
     }
 
     /**
@@ -171,12 +182,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        // throw new NotImplementedException();
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
+        // throw new NotImplementedException();
         return false;
     }
 
@@ -191,6 +204,7 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        // throw new NotImplementedException();
     }
 
     /**
@@ -227,6 +241,8 @@ public class BufferPool {
                 }
             }
             return;
+        } else{
+            throw new NotImplementedException();
         }
     }
 
@@ -247,6 +263,21 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        // t.getRecordId().getPageId();
+        DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        if (file instanceof BTreeFile){
+            ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
+            for (Page page: dirtyPages){
+                if (!this.Buffer_Pool_RAM.contains(page.getId())){
+                    if (VictimCache.containsKey(page.getId())){
+                        file.writePage(page);
+                        VictimCache.remove(page.getId());
+                    }
+                }
+            }
+        } else {
+            throw new NotImplementedException();
+        }
     }
 
     /**
@@ -257,7 +288,12 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        while (this.Buffer_Pool_RAM.size()>0){
+            EvictNext();
+        }
+        while (this.VictimCache.size()>0){
+            EvictVictime(VictimCache.keySet().iterator().next());
+        }
     }
 
     /** Remove the specific page id from the buffer pool.
@@ -271,6 +307,20 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
+        {
+            Page page = this.Buffer_Pool_RAM.get(pid);
+            if (page!=null){
+                this.BufferPoolPageID.remove(pid);
+            }
+        }
+        {
+            Page page = this.VictimCache.get(pid);
+            if (page!=null){
+                this.VictimCache.remove(pid);
+                throw new NotImplementedException();
+            }
+        }
+        
     }
 
     /**
@@ -299,6 +349,8 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        throw new NotImplementedException();
+
     }
 
     /**
@@ -308,6 +360,7 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+        throw new NotImplementedException();
     }
 
 }

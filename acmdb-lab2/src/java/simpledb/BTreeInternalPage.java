@@ -680,6 +680,19 @@ public class BTreeInternalPage extends BTreePage {
 		while (it.hasNext()){
 			BTreeEntry entry = it.next();
 			ans += 
+			" ( "+entry.getLeftChild().pageNumber() +" , "+ 
+			entry.getKey() +" , "
+			+ entry.getRightChild().pageNumber() + " ) "
+			;
+		}
+		return " [ "+ ans+" ] ";
+	}
+	public String SuperView(){
+		String ans = "";
+		Iterator<BTreeEntry> it = this.iterator();
+		while (it.hasNext()){
+			BTreeEntry entry = it.next();
+			ans += 
 			// " ( "+entry.getLeftChild() +" , "+ 
 			entry.getKey() +" , "
 			// + entry.getRightChild()+" ) "
