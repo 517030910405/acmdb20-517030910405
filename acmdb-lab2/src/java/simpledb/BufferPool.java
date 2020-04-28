@@ -51,7 +51,7 @@ public class BufferPool {
     // private int FirstID = 0;
     private Random rand = null;
 
-    private PidTimeStamp NCache;
+    private PidTimeStamp NCache,VCache;
 
     private int cnt = 0;
     
@@ -77,7 +77,7 @@ public class BufferPool {
         numOfPages = numPages;
         Buffer_Pool_RAM = new ConcurrentHashMap<>();
         // rand = new Random();
-        // VCache = new PidTimeStamp();
+        VCache = new PidTimeStamp();
         NCache = new PidTimeStamp();
 
         // BufferPoolPageID = new ConcurrentHashMap<>();
@@ -116,17 +116,20 @@ public class BufferPool {
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException{
+        // if (true)throw new NotImplementedException();
         // some code goes here
         ++cnt;
         if (pid == null) throw new DbException("pid is null");
         Page ans = Buffer_Pool_RAM.get(pid);
         if (ans!=null) {
             NCache.insert(pid, cnt);
-            // VCache.remove(pid);
+            VCache.remove(pid);
             return ans;
         }
+        // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages+", "+NCache.size());
         // new page
         if (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
+            // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages);
             while (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
                 try{
                     EvictNext();
@@ -134,7 +137,6 @@ public class BufferPool {
                     throw new NotImplementedException();
                 }
             }
-            System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages);
         }
         ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
         Buffer_Pool_RAM.put(pid, ans);
@@ -216,8 +218,10 @@ public class BufferPool {
             file.insertTuple(tid, t);
             for (Page page: dpage){
                 //TODO: flush? 
-                file.writePage(page);
-                discardPage(page.getId());
+                if (VCache.getTime(page.getId())!=-1){
+                    file.writePage(page);
+                    discardPage(page.getId());
+                }
             }
             return;
         } else{
@@ -247,8 +251,10 @@ public class BufferPool {
         if (file instanceof BTreeFile){
             ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
             for (Page page: dirtyPages){
-                file.writePage(page);
-                discardPage(page.getId());
+                if (VCache.getTime(page.getId())!=-1){
+                    file.writePage(page);
+                    discardPage(page.getId());
+                }
             }
         } else {
             throw new NotImplementedException();
@@ -330,8 +336,13 @@ public class BufferPool {
             throw new IOException("Pid Not Found");
         }
         // DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-        flushPage(pid);
-        discardPage(pid);
+        if (page.isDirty()==null){
+            // flushPage(pid);
+            discardPage(pid);
+        }else{
+            NCache.remove(pid);
+            VCache.insert(pid, cnt);
+        }
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -359,42 +370,43 @@ public class BufferPool {
         public PidTimeStamp(){
             getid = new TreeMap<>();
             gettime = new ConcurrentHashMap<>();
-            System.err.println("PidTImeStamp");
+            // System.err.println("PidTImeStamp");
         }
-        public void insert(PageId pid, int timeStamp){
+        public synchronized void insert(PageId pid, int timeStamp){
             if (gettime.containsKey(pid)){
                 int lastTime = gettime.get(pid);
                 getid.remove(lastTime);
                 gettime.remove(pid);
             }
             getid.put(timeStamp, pid);
+            gettime.put(pid, timeStamp);
         }
-        public  int getTime(PageId pid){
+        public synchronized int getTime(PageId pid){
             if (pid==null) return -1;
             if (!gettime.containsKey(pid)) return -1;
             return gettime.get(pid);
         }
-        public  PageId getPid(int timeStamp){
+        public synchronized PageId getPid(int timeStamp){
             return getid.get(timeStamp);
         }
-        public  void remove(PageId pid){
+        public synchronized void remove(PageId pid){
             if (pid==null) return;
             if (!gettime.containsKey(pid)) return;
             int lastTime = gettime.get(pid);
             gettime.remove(pid);
             getid.remove(lastTime);
         }
-        public  PageId getFirst(){
+        public synchronized PageId getFirst(){
             if (getid.size()==0) return null;
             return getid.firstEntry().getValue();
         }
-        public  int size(){
+        public synchronized int size(){
             return gettime.size();
         }
-        public  Iterator<PageId> iterator(){
+        public synchronized Iterator<PageId> iterator(){
             return gettime.keySet().iterator();
         }
-        public  Vector<PageId> PageIdVector(){
+        public synchronized Vector<PageId> PageIdVector(){
             // Set<PageId> set = gettime.keySet();
             Vector<PageId> ans = new Vector<>();
             Iterator<PageId> iter = this.iterator();
@@ -403,9 +415,9 @@ public class BufferPool {
             }
             return ans;
         }
-        public  void clear(){
-            gettime.clear();
-            getid.clear();
-        }
+        // public synchronized void clear(){
+        //     gettime.clear();
+        //     getid.clear();
+        // }
     }
 }

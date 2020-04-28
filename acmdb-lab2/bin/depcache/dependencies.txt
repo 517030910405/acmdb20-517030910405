@@ -227,7 +227,6 @@ java.io.DataOutputStream
 simpledb.Field
 simpledb.RecordId
 java.lang.Integer
-java.lang.Byte
 simpledb.DbException
 java.lang.StringBuilder
 simpledb.IntField
@@ -424,7 +423,6 @@ java.io.DataOutputStream
 simpledb.Field
 simpledb.RecordId
 java.lang.Integer
-java.lang.Byte
 simpledb.DbException
 java.lang.StringBuilder
 simpledb.IntField
@@ -603,12 +601,12 @@ simpledb.PageId
 java.lang.RuntimeException
 java.lang.Throwable
 java.util.Iterator
-simpledb.Debug
 java.lang.IllegalAccessException
+simpledb.Debug
 java.lang.reflect.InvocationTargetException
 java.util.HashMap
-simpledb.Database
 java.lang.ClassNotFoundException
+simpledb.Database
 java.lang.Integer
 simpledb.LogFile
 java.lang.Object
@@ -712,8 +710,6 @@ simpledb.BTreePageIdTest
 junit.framework.JUnit4TestAdapter
 simpledb.systemtest.SimpleDbTestBase
 ||:simpledb.BufferPool
-java.lang.StringBuilder
-java.lang.System
 simpledb.Field
 simpledb.BufferPool$PidTimeStamp
 java.util.ArrayList
@@ -721,7 +717,6 @@ simpledb.RecordId
 java.util.concurrent.ConcurrentHashMap
 simpledb.Catalog
 simpledb.TransactionAbortedException
-java.io.PrintStream
 simpledb.BufferPool
 sun.reflect.generics.reflectiveObjects.NotImplementedException
 simpledb.TransactionId
@@ -734,7 +729,6 @@ simpledb.BTreeFile
 simpledb.Database
 simpledb.DbFile
 java.lang.Object
-java.lang.String
 simpledb.Page
 simpledb.DbException
 ||:simpledb.Catalog
@@ -887,8 +881,6 @@ java.util.TreeMap
 simpledb.PageId
 simpledb.BufferPool$PidTimeStamp
 java.util.concurrent.ConcurrentHashMap
-java.io.PrintStream
-java.lang.System
 java.util.Iterator
 java.util.Map
 java.util.Map$Entry
@@ -970,9 +962,9 @@ simpledb.Database
 simpledb.BufferPool
 simpledb.BTreeUtility
 java.lang.Object
-simpledb.BTreeFile
 simpledb.IndexPredicate
 java.io.IOException
+simpledb.BTreeFile
 java.lang.Exception
 ||:simpledb.Predicate
 java.lang.Object
@@ -1059,8 +1051,8 @@ simpledb.BTreeUtility
 simpledb.BufferPool
 java.lang.Object
 simpledb.IndexPredicate
-simpledb.BTreeFile
 java.io.IOException
+simpledb.BTreeFile
 simpledb.BTreeUtility$BTreeWriter
 java.lang.Exception
 ||:simpledb.HeapPageIdTest
@@ -1182,8 +1174,8 @@ java.lang.IllegalAccessException
 java.lang.System
 simpledb.Database
 simpledb.BufferPool
-java.lang.Object
 java.io.IOException
+java.lang.Object
 simpledb.LogFile
 java.lang.reflect.Field
 ||:simpledb.systemtest.EvictionTest
@@ -1211,8 +1203,8 @@ java.io.ByteArrayOutputStream
 java.io.DataOutputStream
 [B
 java.lang.System
-java.lang.Object
 java.io.IOException
+java.lang.Object
 simpledb.BTreeRootPtrPage
 simpledb.BTreePageId
 ||:simpledb.BTreeUtility$BTreeInserter
@@ -1223,12 +1215,12 @@ simpledb.Tuple
 simpledb.TransactionId
 java.lang.Throwable
 simpledb.Database
-simpledb.BTreeUtility
 simpledb.TransactionAbortedException
+simpledb.BTreeUtility
 simpledb.BufferPool
-simpledb.BTreeFile
-java.io.IOException
 java.lang.Object
+java.io.IOException
+simpledb.BTreeFile
 simpledb.BTreeUtility$BTreeInserter
 java.lang.Exception
 ||:simpledb.BTreeChecker$SubtreeSummary
@@ -1246,8 +1238,8 @@ simpledb.BTreeFileEncoder$TupleComparator
 simpledb.Field
 simpledb.Predicate$Op
 simpledb.BTreeFileEncoder
-java.util.Comparator
 simpledb.Tuple
+java.util.Comparator
 ||:simpledb.RecordIdTest
 org.junit.Assert
 junit.framework.JUnit4TestAdapter
@@ -1305,8 +1297,8 @@ java.lang.Object
 simpledb.TransactionId
 simpledb.Database
 simpledb.Transaction
-simpledb.LogFile
 java.io.IOException
+simpledb.LogFile
 simpledb.BufferPool
 ||:simpledb.so
 java.lang.Object
