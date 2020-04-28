@@ -118,7 +118,7 @@ public class HeapFile implements DbFile {
         // return 0;
     }
 
-    // see DbFile.java for javadocs
+    // see #DbFile.java for javadocs
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here

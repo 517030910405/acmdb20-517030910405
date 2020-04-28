@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.Vector;
 // import java.util.NoSuchElementException;
 // import java.util.Vector;
@@ -38,11 +39,14 @@ public class BufferPool {
 
     // private Vector<Page> Buffer_Pool_RAM = null;
     private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
+
     private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
     private ConcurrentHashMap<PageId, Integer> indexInList = null;
     private ConcurrentHashMap<PageId, Page> VictimCache = null;
     private int FirstID = 0;
     private Random rand = null;
+
+    private PidTimeStamp NCache, VCache;
 
     private int cnt = 0;
 
@@ -128,9 +132,6 @@ public class BufferPool {
         ++cnt;
         if (pid == null) throw new DbException("pid is null");
         Page ans = Buffer_Pool_RAM.get(pid);
-        if (ans == null){
-            ans = VictimCache.get(pid);
-        }
         if (ans!=null) {
             int index = indexInList.get(pid);
             indexInList.remove(pid);
@@ -138,6 +139,10 @@ public class BufferPool {
             BufferPoolPageID.remove(index);
             BufferPoolPageID.put(cnt, pid);
             return ans;
+        }
+        if (ans == null){
+            ans = VictimCache.get(pid);
+            if (ans!=null) return ans;
         }
         // new page
         if (Buffer_Pool_RAM.size()+VictimCache.size()>=this.numOfPages&&Buffer_Pool_RAM.size()>0){
@@ -310,7 +315,7 @@ public class BufferPool {
         {
             Page page = this.Buffer_Pool_RAM.get(pid);
             if (page!=null){
-                this.BufferPoolPageID.remove(pid);
+                this.Buffer_Pool_RAM.remove(pid);
             }
         }
         {
@@ -362,5 +367,35 @@ public class BufferPool {
         // not necessary for lab1
         throw new AssertionError();
     }
-
+    
+    private class PidTimeStamp{
+        private TreeMap<Integer,PageId> getid;
+        private HashMap<PageId,Integer> gettime;
+        public PidTimeStamp(){
+            getid = new TreeMap<>();
+            gettime = new HashMap<>();
+        }
+        public synchronized void insert(PageId pid, int timeStamp){
+            if (gettime.containsKey(pid)){
+                int lastTime = gettime.get(pid);
+                getid.remove(lastTime);
+                gettime.remove(pid);
+            }
+            getid.put(timeStamp, pid);
+        }
+        public synchronized int getTime(PageId pid){
+            return gettime.get(pid);
+        }
+        public synchronized PageId getPid(int timeStamp){
+            return getid.get(timeStamp);
+        }
+        public synchronized void remove(PageId pid){
+            int lastTime = gettime.get(pid);
+            gettime.remove(pid);
+            getid.remove(lastTime);
+        }
+        public synchronized PageId getFirst(){
+            return getid.firstEntry().getValue();
+        }
+    }
 }
