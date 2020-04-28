@@ -141,6 +141,7 @@ public class BufferPool {
         ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
         Buffer_Pool_RAM.put(pid, ans);
         NCache.insert(pid, cnt);
+        VCache.remove(pid);
         return ans;
     }
 
@@ -216,8 +217,9 @@ public class BufferPool {
             Field field = t.getField(file.keyField());
             ArrayList<Page> dpage = 
             file.insertTuple(tid, t);
-            for (Page page: dpage){
+            for (PageId pageid: VCache.PageIdVector()){
                 //TODO: flush? 
+                Page page = Buffer_Pool_RAM.get(pageid);
                 if (VCache.getTime(page.getId())!=-1){
                     file.writePage(page);
                     discardPage(page.getId());
@@ -250,7 +252,10 @@ public class BufferPool {
         DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         if (file instanceof BTreeFile){
             ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
-            for (Page page: dirtyPages){
+            // for (Page page: dirtyPages){
+            for (PageId pageid: VCache.PageIdVector()){
+                //TODO: flush? 
+                Page page = Buffer_Pool_RAM.get(pageid);
                 if (VCache.getTime(page.getId())!=-1){
                     file.writePage(page);
                     discardPage(page.getId());
@@ -296,6 +301,7 @@ public class BufferPool {
             if (page!=null){
                 this.Buffer_Pool_RAM.remove(pid);
                 NCache.remove(pid);
+                VCache.remove(pid);
             }
         }
     }
@@ -316,9 +322,13 @@ public class BufferPool {
         if (page.isDirty()!=null){
             file.writePage(page);
             page.markDirty(false, null);
+            VCache.remove(pid);
+            NCache.insert(pid, cnt);
             return;
         }else{
             file.writePage(page);
+            VCache.remove(pid);
+            NCache.insert(pid, cnt);
             return;
         }
     }
