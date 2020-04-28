@@ -374,8 +374,9 @@ public class BufferPool {
         public PidTimeStamp(){
             getid = new TreeMap<>();
             gettime = new HashMap<>();
+            System.err.println("PidTImeStamp");
         }
-        public synchronized void insert(PageId pid, int timeStamp){
+        public void insert(PageId pid, int timeStamp){
             if (gettime.containsKey(pid)){
                 int lastTime = gettime.get(pid);
                 getid.remove(lastTime);
@@ -383,19 +384,43 @@ public class BufferPool {
             }
             getid.put(timeStamp, pid);
         }
-        public synchronized int getTime(PageId pid){
+        public  int getTime(PageId pid){
+            if (pid==null) return -1;
+            if (!gettime.containsKey(pid)) return -1;
             return gettime.get(pid);
         }
-        public synchronized PageId getPid(int timeStamp){
+        public  PageId getPid(int timeStamp){
             return getid.get(timeStamp);
         }
-        public synchronized void remove(PageId pid){
+        public  void remove(PageId pid){
+            if (pid==null) return;
+            if (!gettime.containsKey(pid)) return;
             int lastTime = gettime.get(pid);
             gettime.remove(pid);
             getid.remove(lastTime);
         }
-        public synchronized PageId getFirst(){
+        public  PageId getFirst(){
+            if (getid.size()==0) return null;
             return getid.firstEntry().getValue();
+        }
+        public  int size(){
+            return gettime.size();
+        }
+        public  Iterator<PageId> iterator(){
+            return gettime.keySet().iterator();
+        }
+        public  Vector<PageId> PageIdVector(){
+            // Set<PageId> set = gettime.keySet();
+            Vector<PageId> ans = new Vector<>();
+            Iterator<PageId> iter = this.iterator();
+            while (iter.hasNext()){
+                ans.add(iter.next());
+            }
+            return ans;
+        }
+        public  void clear(){
+            gettime.clear();
+            getid.clear();
         }
     }
 }
