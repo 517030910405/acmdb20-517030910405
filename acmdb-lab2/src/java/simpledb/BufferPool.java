@@ -5,13 +5,18 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.Vector;
 // import java.util.NoSuchElementException;
 // import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 // import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -40,30 +45,15 @@ public class BufferPool {
     // private Vector<Page> Buffer_Pool_RAM = null;
     private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
 
-    private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
-    private ConcurrentHashMap<PageId, Integer> indexInList = null;
-    private ConcurrentHashMap<PageId, Page> VictimCache = null;
-    private int FirstID = 0;
+    // private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
+    // private ConcurrentHashMap<PageId, Integer> indexInList = null;
+    // private ConcurrentHashMap<PageId, Page> VictimCache = null;
+    // private int FirstID = 0;
     private Random rand = null;
 
-    private PidTimeStamp NCache, VCache;
+    private PidTimeStamp NCache;
 
     private int cnt = 0;
-
-    /**
-     * Get Evict Index and Remove from LRU List
-     * @return The Next Evicted PageID
-     */
-    private synchronized PageId decideNextEviction(){
-        PageId ans = BufferPoolPageID.get(FirstID);
-        while (ans==null){
-            ++FirstID;
-            ans = BufferPoolPageID.get(FirstID);
-        }
-        BufferPoolPageID.remove(FirstID);
-        indexInList.remove(ans);
-        return ans;
-    }
     
     /**
      * Evict the next page
@@ -71,17 +61,12 @@ public class BufferPool {
      * @throws IOException
      */
     private synchronized void EvictNext()throws IOException{
-        PageId EvPageID = decideNextEviction();
-        flushPage(EvPageID);
+        // if (1==1)throw new NotImplementedException();
+        PageId EvPageID = NCache.getFirst();
+        if (EvPageID!=null)
+        try_Evict(EvPageID);
     }
 
-    private synchronized void EvictVictime(PageId pageid)throws IOException{
-        Page page=VictimCache.get(pageid);
-        if (page!=null){
-            Database.getCatalog().getDatabaseFile(pageid.getTableId()).writePage(page);
-            VictimCache.remove(pageid);
-        }
-    }
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -91,10 +76,13 @@ public class BufferPool {
         // some code goes here
         numOfPages = numPages;
         Buffer_Pool_RAM = new ConcurrentHashMap<>();
-        rand = new Random();
-        BufferPoolPageID = new ConcurrentHashMap<>();
-        indexInList = new ConcurrentHashMap<>();
-        VictimCache = new ConcurrentHashMap<>();
+        // rand = new Random();
+        // VCache = new PidTimeStamp();
+        NCache = new PidTimeStamp();
+
+        // BufferPoolPageID = new ConcurrentHashMap<>();
+        // indexInList = new ConcurrentHashMap<>();
+        // VictimCache = new ConcurrentHashMap<>();
     }
     
     public static int getPageSize() {
@@ -133,34 +121,24 @@ public class BufferPool {
         if (pid == null) throw new DbException("pid is null");
         Page ans = Buffer_Pool_RAM.get(pid);
         if (ans!=null) {
-            int index = indexInList.get(pid);
-            indexInList.remove(pid);
-            indexInList.put(pid, cnt);
-            BufferPoolPageID.remove(index);
-            BufferPoolPageID.put(cnt, pid);
+            NCache.insert(pid, cnt);
+            // VCache.remove(pid);
             return ans;
         }
-        if (ans == null){
-            ans = VictimCache.get(pid);
-            if (ans!=null) return ans;
-        }
         // new page
-        if (Buffer_Pool_RAM.size()+VictimCache.size()>=this.numOfPages&&Buffer_Pool_RAM.size()>0){
-            while (Buffer_Pool_RAM.size()+VictimCache.size()>=this.numOfPages&&Buffer_Pool_RAM.size()>0){
+        if (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
+            while (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
                 try{
                     EvictNext();
                 } catch(IOException e){
-                    throw new AssertionError();
+                    throw new NotImplementedException();
                 }
             }
-            // System.out.println(Buffer_Pool_RAM.size()+" , "+VictimCache.size()+", "+this.numOfPages);
+            System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages);
         }
         ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
         Buffer_Pool_RAM.put(pid, ans);
-        // System.out.println(pid);
-        // System.out.println(cnt);
-        indexInList.put(pid, cnt);
-        this.BufferPoolPageID.put(cnt, pid);
+        NCache.insert(pid, cnt);
         return ans;
     }
 
@@ -176,7 +154,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new AssertionError();
+        // throw new NotImplementedException();
     }
 
     /**
@@ -187,14 +165,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new AssertionError();
+        // throw new NotImplementedException();
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new AssertionError();
+        // throw new NotImplementedException();
         return false;
     }
 
@@ -209,7 +187,7 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        // throw new AssertionError();
+        // throw new NotImplementedException();
     }
 
     /**
@@ -238,16 +216,12 @@ public class BufferPool {
             file.insertTuple(tid, t);
             for (Page page: dpage){
                 //TODO: flush? 
-                if (!this.Buffer_Pool_RAM.contains(page.getId())){
-                    if (VictimCache.containsKey(page.getId())){
-                        file.writePage(page);
-                        VictimCache.remove(page.getId());
-                    }
-                }
+                file.writePage(page);
+                discardPage(page.getId());
             }
             return;
         } else{
-            throw new AssertionError();
+            throw new NotImplementedException();
         }
     }
 
@@ -273,15 +247,11 @@ public class BufferPool {
         if (file instanceof BTreeFile){
             ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
             for (Page page: dirtyPages){
-                if (!this.Buffer_Pool_RAM.contains(page.getId())){
-                    if (VictimCache.containsKey(page.getId())){
-                        file.writePage(page);
-                        VictimCache.remove(page.getId());
-                    }
-                }
+                file.writePage(page);
+                discardPage(page.getId());
             }
         } else {
-            throw new AssertionError();
+            throw new NotImplementedException();
         }
     }
 
@@ -293,11 +263,13 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-        while (this.Buffer_Pool_RAM.size()>0){
-            EvictNext();
-        }
-        while (this.VictimCache.size()>0){
-            EvictVictime(VictimCache.keySet().iterator().next());
+        // System.out.println("flushAll");
+        ++cnt;
+        Iterator<PageId> iter;
+        iter = NCache.PageIdVector().iterator();
+        while (iter.hasNext()){
+            PageId pid = iter.next();
+            flushPage(pid);
         }
     }
 
@@ -312,20 +284,14 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
+        if (pid==null) return;
         {
             Page page = this.Buffer_Pool_RAM.get(pid);
             if (page!=null){
                 this.Buffer_Pool_RAM.remove(pid);
+                NCache.remove(pid);
             }
         }
-        {
-            Page page = this.VictimCache.get(pid);
-            if (page!=null){
-                this.VictimCache.remove(pid);
-                throw new AssertionError();
-            }
-        }
-        
     }
 
     /**
@@ -335,18 +301,37 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        ++cnt;
         Page page = this.Buffer_Pool_RAM.get(pid);
         if (page == null) {
             throw new IOException("Pid Not Found");
         }
         DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         if (page.isDirty()!=null){
-            // file.writePage(page);
-            this.VictimCache.put(pid, page);
-            throw new AssertionError();
+            file.writePage(page);
+            page.markDirty(false, null);
+            return;
+        }else{
+            file.writePage(page);
+            return;
         }
-        this.Buffer_Pool_RAM.remove(pid);
-        return;
+    }
+    /**
+     * Evict a certain page from Normal Cache to Victim Cache if Dirty
+     * Remove if clean
+     * @param pid an ID indicating the page to flush
+     */
+    private synchronized  void try_Evict(PageId pid) throws IOException {
+        // some code goes here
+        // not necessary for lab1
+        ++cnt;
+        Page page = this.Buffer_Pool_RAM.get(pid);
+        if (page == null) {
+            throw new IOException("Pid Not Found");
+        }
+        // DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        flushPage(pid);
+        discardPage(pid);
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -354,7 +339,7 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        throw new AssertionError();
+        throw new NotImplementedException();
 
     }
 
@@ -365,15 +350,15 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
-        throw new AssertionError();
+        throw new NotImplementedException();
     }
     
     private class PidTimeStamp{
         private TreeMap<Integer,PageId> getid;
-        private HashMap<PageId,Integer> gettime;
+        private ConcurrentHashMap<PageId,Integer> gettime;
         public PidTimeStamp(){
             getid = new TreeMap<>();
-            gettime = new HashMap<>();
+            gettime = new ConcurrentHashMap<>();
             System.err.println("PidTImeStamp");
         }
         public void insert(PageId pid, int timeStamp){
