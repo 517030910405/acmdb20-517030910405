@@ -32,7 +32,6 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 	/**
 	 * Unit test for BTreeFile.deleteTuple()
 	 */
-	
 	@Test public void deleteTuple() throws Exception {
 		BTreeFile f;
 		f = BTreeUtility.createRandomBTreeFile(2, 20, null, null, 0);
@@ -83,7 +82,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		sibling.setRightSiblingId(pageId);
 		
 		int totalTuples = page.getNumTuples() + sibling.getNumTuples();
-		System.out.println("Tuple Test: "+page.getNumTuples()+", "+sibling.getNumTuples());
+		
 		empty.stealFromLeafPage(page, sibling, parent, entry, false);
 		assertEquals(totalTuples, page.getNumTuples() + sibling.getNumTuples());
 		assertTrue(page.getNumTuples() == totalTuples/2 || page.getNumTuples() == totalTuples/2 + 1);
@@ -366,11 +365,6 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 			assertTrue(it.hasNext());
 			e = it.next();
 			BTreePage p = (BTreePage) dirtypages.get(e.getRightChild());
-			// System.out.println(leftPageId);
-			// System.out.println(e.getRightChild());
-			// System.out.println(leftPageId);
-			// System.out.println(rightPageId);
-			// System.out.println(parentId);
 			assertEquals(leftPageId, p.getParentId());
 			++count;
 		}

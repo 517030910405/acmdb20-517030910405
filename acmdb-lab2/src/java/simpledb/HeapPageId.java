@@ -8,7 +8,7 @@ public class HeapPageId implements PageId {
 
     private int TableID = -1;
     private int PageNum = -1;
-    private Vector<Integer> hashCoder = null;
+    // private Vector<Integer> hashCoder = null;
     /**
      * Constructor. Create a page id structure for a specific page of a
      * specific table.
@@ -20,9 +20,9 @@ public class HeapPageId implements PageId {
         // some code goes here
         TableID = tableId;
         PageNum = pgNo;
-        hashCoder = new Vector<>();
-        hashCoder.add(tableId);
-        hashCoder.add(pgNo);
+        // hashCoder = new Vector<>();
+        // hashCoder.add(tableId);
+        // hashCoder.add(pgNo);
     }
 
     /** @return the table associated with this PageId */
@@ -48,7 +48,8 @@ public class HeapPageId implements PageId {
      */
     public int hashCode() {
         // some code goes here
-        return hashCoder.hashCode();
+        // return hashCoder.hashCode();
+        return PageNum*((1<<15)+97)+TableID*((1<<5)+13);
         // throw new UnsupportedOperationException("implement this");
     }
 

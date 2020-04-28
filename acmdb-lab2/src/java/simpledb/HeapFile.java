@@ -6,6 +6,8 @@ import java.util.*;
 
 import org.omg.CORBA.portable.UnknownException;
 
+
+
 // import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
@@ -23,6 +25,7 @@ public class HeapFile implements DbFile {
     private File file;
     private TupleDesc tupleDesc;
     private RandomAccessFile rfile;
+    private int tableid;
     /**
      * Constructs a heap file backed by the specified file.
      * 
@@ -34,6 +37,7 @@ public class HeapFile implements DbFile {
         // some code goes here
         file = f;
         tupleDesc = td;
+        tableid = file.getAbsoluteFile().hashCode();
         try{
             rfile = new RandomAccessFile((File)file, (String)"rw");
         } catch (FileNotFoundException e){
@@ -62,7 +66,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-        return file.getAbsoluteFile().hashCode();
+        return tableid;
         // throw new UnsupportedOperationException("implement this");
     }
 
@@ -102,6 +106,10 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
+        PageId pid = page.getId();
+        byte[] data = page.getPageData();
+        rfile.seek(((long)pid.pageNumber())*BufferPool.getPageSize());
+        rfile.write(data);
         // throw new AssertionError();
     }
 
@@ -122,7 +130,34 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        throw new AssertionError();
+        ArrayList<Page> ans = new ArrayList<>();
+        HashMap<PageId,Page> dirtypages = new HashMap<>();
+        int numOfPages = this.numPages();
+        for (int i=0;i<numOfPages;++i){
+            Page page = this.getPage(tid, dirtypages, 
+                new HeapPageId(this.getId(), i), Permissions.READ_ONLY);
+            HeapPage hpage = (HeapPage) page;
+            if (hpage.getNumEmptySlots()>0){
+                page = this.getPage(tid, dirtypages, 
+                    new HeapPageId(this.getId(), i), Permissions.READ_WRITE);
+                hpage = (HeapPage) page;
+                hpage.insertTuple(t);
+                ans.addAll(dirtypages.values());
+                return ans;
+            }
+        }
+        HeapPageId pid = new HeapPageId(this.getId(), numOfPages);
+        HeapPage page = new HeapPage(pid,
+            HeapPage.createEmptyPageData());
+        page.insertTuple(t);
+        this.writePage(page);
+        page = (HeapPage)this.getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+        if (page.getNumEmptySlots()!=page.numSlots-1){
+            throw new AssertionError("file open and close error by lijiasen");
+        }
+        ans.addAll(dirtypages.values());
+        return ans;
+        // throw new AssertionError();
         // return null;
         // not necessary for lab1
     }
@@ -131,8 +166,15 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
         // some code goes here
-        throw new AssertionError();
-        // return null;
+        // throw new AssertionError();
+        ArrayList<Page> ans = new ArrayList<>();
+        HashMap<PageId,Page> dirtypages = new HashMap<>();
+        Page page = this.getPage(tid, dirtypages, 
+            t.getRecordId().getPageId(), Permissions.READ_WRITE);
+        HeapPage hpage = (HeapPage) page;
+        hpage.deleteTuple(t);
+        ans.addAll(dirtypages.values());
+        return ans;
         // not necessary for lab1
     }
 
@@ -196,6 +238,39 @@ public class HeapFile implements DbFile {
         };
         // return null;
     }
+	/**
+	 * Method to encapsulate the process of locking/fetching a page.  First the method checks the local 
+	 * cache ("dirtypages"), and if it can't find the requested page there, it fetches it from the buffer pool.  
+	 * It also adds pages to the dirtypages cache if they are fetched with read-write permission, since 
+	 * presumably they will soon be dirtied by this transaction.
+	 * 
+	 * This method is needed to ensure that page updates are not lost if the same pages are
+	 * accessed multiple times.
+	 * 
+	 * @param tid - the transaction id
+	 * @param dirtypages - the list of dirty pages which should be updated with all new dirty pages
+	 * @param pid - the id of the requested page
+	 * @param perm - the requested permissions on the page
+	 * @return the requested page
+	 * 
+	 * @throws DbException
+	 * @throws IOException
+	 * @throws TransactionAbortedException
+	 */
+	Page getPage(TransactionId tid, HashMap<PageId, Page> dirtypages, PageId pid, Permissions perm)
+			throws DbException, TransactionAbortedException {
+		if(dirtypages.containsKey(pid)) {
+			return dirtypages.get(pid);
+		}
+		else {
+			Page p = Database.getBufferPool().getPage(tid, pid, perm);
+			if(perm == Permissions.READ_WRITE) {
+                p.markDirty(true, tid);
+				dirtypages.put(pid, p);
+			}
+			return p;
+		}
+	}
 
 }
 

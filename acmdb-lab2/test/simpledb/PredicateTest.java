@@ -3,8 +3,6 @@ package simpledb;
 import org.junit.Test;
 
 import simpledb.systemtest.SimpleDbTestBase;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import junit.framework.JUnit4TestAdapter;
@@ -61,7 +59,6 @@ public class PredicateTest extends SimpleDbTestBase{
    * JUnit suite target
    */
   public static junit.framework.Test suite() {
-    // throw new NotImplementedException();
     return new JUnit4TestAdapter(PredicateTest.class);
   }
 }

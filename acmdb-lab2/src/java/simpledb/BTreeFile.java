@@ -82,6 +82,7 @@ public class BTreeFile implements DbFile {
 	 * 
 	 * @param pid - the id of the page to read from disk
 	 * @return the page constructed from the contents on disk
+	 * {@link #writePage(Page)}
 	 */
 	public Page readPage(PageId pid) {
 		BTreePageId id = (BTreePageId) pid;
@@ -150,6 +151,7 @@ public class BTreeFile implements DbFile {
 	 * be called from the BufferPool when pages are flushed to disk
 	 * 
 	 * @param page - the page to write to disk
+	 * {@link #readPage(PageId)}
 	 */
 	public void writePage(Page page) throws IOException {
 		BTreePageId id = (BTreePageId) page.getId();
@@ -744,6 +746,8 @@ public class BTreeFile implements DbFile {
 		else {
 			Page p = Database.getBufferPool().getPage(tid, pid, perm);
 			if(perm == Permissions.READ_WRITE) {
+				//markDirty lijiasen added
+				p.markDirty(true, tid);
 				dirtypages.put(pid, p);
 			}
 			return p;

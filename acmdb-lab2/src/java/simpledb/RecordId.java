@@ -12,7 +12,7 @@ public class RecordId implements Serializable {
     private static final long serialVersionUID = 1L;
     private PageId PageNum = null;
     private int TupleNum = -1;
-    private Vector<Integer> hashCoder = null;
+    // private Vector<Integer> hashCoder = null;
     /**
      * Creates a new RecordId referring to the specified PageId and tuple
      * number.
@@ -26,9 +26,9 @@ public class RecordId implements Serializable {
         // some code goes here
         PageNum = pid;
         TupleNum = tupleno;
-        hashCoder = new Vector<>();
-        hashCoder.add(pid.hashCode());
-        hashCoder.add(tupleno);
+        // hashCoder = new Vector<>(2);
+        // hashCoder.add(pid.hashCode());
+        // hashCoder.add(tupleno);
     }
 
     /**
@@ -74,7 +74,8 @@ public class RecordId implements Serializable {
     public int hashCode() {
         // some code goes here
         // throw new UnsupportedOperationException("implement this");
-        return hashCoder.hashCode();
+        // return hashCoder.hashCode();
+        return PageNum.hashCode()*((1<<15)+97)+TupleNum*17;
     }
 
 }
