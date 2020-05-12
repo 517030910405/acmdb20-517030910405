@@ -91,7 +91,7 @@ public class TupleDesc implements Serializable {
      */
     public boolean updateInfo(){
         int gsize = 0;
-        FieldNameToIndexMap = new ConcurrentHashMap<>();
+        FieldNameToIndexMap = new ConcurrentHashMap<>(4);
         for (int i=0;i<tupleDescItems.size();++i){
             if (tupleDescItems.get(i).fieldName!=null && 
                 !FieldNameToIndexMap.containsKey(tupleDescItems.get(i).fieldName))
