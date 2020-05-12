@@ -56,7 +56,7 @@ public class TupleDesc implements Serializable {
         @Override
         public int hashCode(){
             if (hashCodeBuffer!=-1) return hashCodeBuffer;
-            Vector<Integer> has = new Vector<>();
+            Vector<Integer> has = new Vector<>(2);
             has.add(fieldName.hashCode());
             has.add(fieldType.hashCode());
             hashCodeBuffer = has.hashCode();
@@ -116,7 +116,7 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
         // some code goes here
-        tupleDescItems = new Vector<>();
+        tupleDescItems = new Vector<>(typeAr.length);
         for (int i=0;i<typeAr.length;++i){
             tupleDescItems.add(new TDItem(typeAr[i],fieldAr[i]));
         }
@@ -133,7 +133,7 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr) {
         // some code goes here
-        tupleDescItems = new Vector<>();
+        tupleDescItems = new Vector<>(typeAr.length);
         for (int i=0;i<typeAr.length;++i){
             tupleDescItems.add(new TDItem(typeAr[i],""));
         }
@@ -143,9 +143,10 @@ public class TupleDesc implements Serializable {
     /**
      * Empty Constructor. Nothing here. 
      */
-    public TupleDesc() {
+    public TupleDesc(int i) {
         // some code goes here
-        tupleDescItems = new Vector<>();
+        if (i==0) tupleDescItems = new Vector<>();
+        else tupleDescItems = new Vector<>(i);
         updateInfo();
     }
 
@@ -231,7 +232,7 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
-        TupleDesc ans = new TupleDesc();
+        TupleDesc ans = new TupleDesc(td1.tupleDescItems.size()+td2.tupleDescItems.size());
         ans.tupleDescItems.addAll(td1.tupleDescItems);
         ans.tupleDescItems.addAll(td2.tupleDescItems);
         ans.updateInfo();
@@ -275,5 +276,14 @@ public class TupleDesc implements Serializable {
         // some code goes heres
         return tupleDescItems.toString();
         // return "";
+    }
+    /**
+     * 
+     * @return the length of the tupleDesc, 
+     * <p>
+     * How many items are in the tupleDesc
+     */
+    public int getLength(){
+        return this.tupleDescItems.size();
     }
 }

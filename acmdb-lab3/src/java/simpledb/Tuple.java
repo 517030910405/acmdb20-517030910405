@@ -147,4 +147,9 @@ public class Tuple implements Serializable {
         recordId = null;
         schema = td;
     }
+
+    // public static Tuple merge(Tuple tup1,Tuple tup2){
+        
+    //     return null;
+    // }
 }

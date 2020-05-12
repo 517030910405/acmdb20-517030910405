@@ -144,6 +144,7 @@ public class TestUtil {
             }
 
             if (!matched) {
+                // System.out.println("expected tuple not found: " + expectedTup);
                 throw new RuntimeException("expected tuple not found: " + expectedTup);
             }
         }

@@ -113,6 +113,9 @@ public class SeqScan implements DbIterator {
 
     public void close() {
         // some code goes here
+        // System.out.println(dbfileTupIterator);
+        //TODO: why? why can be null?
+        if (dbfileTupIterator == null)return;
         dbfileTupIterator.close();
         dbfileTupIterator = null;
     }

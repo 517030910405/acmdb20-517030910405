@@ -1,5 +1,5 @@
-ant clean
-ant runsystest -Dtest=EvictionTest
+# ant clean
+# ant runsystest -Dtest=EvictionTest
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=BTreeFileReadTest
 # ant runsystest -Dtest=BTreeScanTest
@@ -8,3 +8,20 @@ ant runsystest -Dtest=EvictionTest
 # ant runtest -Dtest=BTreeFileDeleteTest
 # ant runsystest -Dtest=BTreeFileDeleteTest
 
+ant runtest -Dtest=PredicateTest
+ant runtest -Dtest=JoinPredicateTest
+ant runtest -Dtest=FilterTest
+ant runtest -Dtest=JoinTest 
+ant runtest -Dtest=HashEquiJoinTest
+ant runsystest -Dtest=FilterTest
+ant runsystest -Dtest=JoinTest 
+ant runsystest -Dtest=HashEquiJoinTest
+
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=PredicateTest
