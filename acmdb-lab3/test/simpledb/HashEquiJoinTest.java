@@ -99,19 +99,20 @@ public class HashEquiJoinTest extends SimpleDbTestBase {
             }
         }
         */
+
         // Begin the join
         TransactionId tid = new TransactionId();
         SeqScan ss1 = new SeqScan(tid, table1.getId(), "");
         SeqScan ss2 = new SeqScan(tid, table2.getId(), "");
         JoinPredicate p = new JoinPredicate(0, Predicate.Op.EQUALS, 0);
         HashEquiJoin joinOp = new HashEquiJoin(p, ss1, ss2);
-        
+
         joinOp.open();
-        
+
         int cnt = 0;
         while(joinOp.hasNext()) {
-          Tuple t = joinOp.next();
-          cnt++;
+            Tuple t = joinOp.next();
+            cnt++;
         }
 
         joinOp.close();
