@@ -169,6 +169,8 @@ public class HeapFile implements DbFile {
         // throw new AssertionError();
         ArrayList<Page> ans = new ArrayList<>();
         HashMap<PageId,Page> dirtypages = new HashMap<>();
+        if (t.getRecordId().getPageId().pageNumber()>=numPages()||t.getRecordId().getPageId().pageNumber()<0)
+            throw new DbException("Invalid Delete （づ￣3￣）づ╭❤～");
         Page page = this.getPage(tid, dirtypages, 
             t.getRecordId().getPageId(), Permissions.READ_WRITE);
         HeapPage hpage = (HeapPage) page;

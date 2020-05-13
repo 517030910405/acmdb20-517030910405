@@ -256,6 +256,12 @@ public class HeapPage implements Page {
         int i=t.getRecordId().tupleno();
         if (i<0||i>=numSlots) throw new DbException("Rid error by lijiasen");
         if (!isSlotUsed(i)) throw new DbException("Rid slot is empty by lijiasen");
+        if (!tuples[i].equals(t)) {
+            // System.out.println("（づ ^ 3 ^ ）づ╭❤～");
+            System.out.println(tuples[i]);
+            System.out.println(t);            
+            throw new DbException("Rid is faked （づ￣3￣）づ╭❤～");
+        }
         tuples[i] = null;
         markSlotUsed(i, false);
         return;

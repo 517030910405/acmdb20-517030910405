@@ -212,9 +212,10 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        if (Database.getCatalog().getDatabaseFile(tableId).getClass()==BTreeFile.class){
-            BTreeFile file = (BTreeFile)Database.getCatalog().getDatabaseFile(tableId);
-            Field field = t.getField(file.keyField());
+        //if (Database.getCatalog().getDatabaseFile(tableId).getClass()==BTreeFile.class){
+        if (Database.getCatalog().getDatabaseFile(tableId) instanceof DbFile){
+            DbFile file = Database.getCatalog().getDatabaseFile(tableId);
+            // Field field = t.getField(file.keyField());
             ArrayList<Page> dpage = 
             file.insertTuple(tid, t);
             for (PageId pageid: VCache.PageIdVector()){
@@ -250,7 +251,7 @@ public class BufferPool {
         // not necessary for lab1
         // t.getRecordId().getPageId();
         DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
-        if (file instanceof BTreeFile){
+        if (file instanceof DbFile){
             ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
             // for (Page page: dirtyPages){
             for (PageId pageid: VCache.PageIdVector()){

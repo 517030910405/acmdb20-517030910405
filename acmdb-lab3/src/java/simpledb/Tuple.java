@@ -96,6 +96,26 @@ public class Tuple implements Serializable {
     }
 
     /**
+     * @return whether equals o or not <p>
+     * Based on the <B><I>Values</I></B> in the Tuple
+     */
+    @Override
+    public boolean equals(Object o){
+        // boolean ans = true;
+        if (o == null) return false;
+        if (o.getClass()!=this.getClass()) return false;
+        Tuple ot = (Tuple) o;
+        if (ot.tuple_record.length!=this.tuple_record.length) return false;
+        int len = tuple_record.length;
+        for (int i=0;i<len;++i){
+            if (!this.getField(i).equals(ot.getField(i))){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Returns the contents of this Tuple as a string. Note that to pass the
      * system tests, the format needs to be as follows:
      *
@@ -105,7 +125,11 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return tuple_record.toString();
+        String ans = "[";
+        for (int i=0;i<tuple_record.length;++i){
+            ans += tuple_record[i]+",";
+        }
+        return ans+"]";
         // throw new UnsupportedOperationException("Implement this");
     }
 

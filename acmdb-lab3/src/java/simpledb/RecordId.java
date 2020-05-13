@@ -78,4 +78,8 @@ public class RecordId implements Serializable {
         return PageNum.hashCode()*((1<<15)+97)+TupleNum*17;
     }
 
+    @Override
+    public String toString(){
+        return "rid["+getPageId().getTableId()+","+getPageId().pageNumber()+","+tupleno()+"]";
+    }
 }
