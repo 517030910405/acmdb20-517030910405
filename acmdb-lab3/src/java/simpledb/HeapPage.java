@@ -1,6 +1,9 @@
 package simpledb;
 
 import java.util.*;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 import java.io.*;
 
 /**
@@ -258,8 +261,8 @@ public class HeapPage implements Page {
         if (!isSlotUsed(i)) throw new DbException("Rid slot is empty by lijiasen");
         if (!tuples[i].equals(t)) {
             // System.out.println("（づ ^ 3 ^ ）づ╭❤～");
-            System.out.println(tuples[i]);
-            System.out.println(t);            
+            // System.out.println(tuples[i]);
+            // System.out.println(t);            
             throw new DbException("Rid is faked （づ￣3￣）づ╭❤～");
         }
         tuples[i] = null;
@@ -277,6 +280,7 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+        // System.out.println("Notice: Not Defeat Method using Heap1");
         if (!td.equals(t.getTupleDesc())){
             throw new DbException("TD ERROR by lijiasen");
         }
@@ -285,6 +289,11 @@ public class HeapPage implements Page {
                 markSlotUsed(i, true);
                 t.setRecordId(new RecordId(pid, i));
                 tuples[i] = t;
+                // if (!Database.getBufferPool().hasPage(pid)){
+                //     System.out.println("Notice: Not Defeat Method using Heap2");
+                //     try{Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(this);}
+                //     catch(IOException e){throw new NotImplementedException();}
+                // }
                 return;
             }
         }

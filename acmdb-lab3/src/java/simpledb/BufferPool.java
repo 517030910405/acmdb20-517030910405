@@ -219,11 +219,17 @@ public class BufferPool {
             ArrayList<Page> dpage = 
             file.insertTuple(tid, t);
             for (PageId pageid: VCache.PageIdVector()){
-                //TODO: flush? 
+                //TODO: flush?  Please Check the lock before writeback
                 Page page = Buffer_Pool_RAM.get(pageid);
                 if (VCache.getTime(page.getId())!=-1){
                     file.writePage(page);
                     discardPage(page.getId());
+                }
+            }
+            for (Page page:dpage){
+                if (NCache.getTime(page.getId())==-1){
+                    // System.out.println("Not Defeat Method to use BufferPool 1");
+                    file.writePage(page);
                 }
             }
             return;
@@ -262,6 +268,13 @@ public class BufferPool {
                     discardPage(page.getId());
                 }
             }
+            for (Page page:dirtyPages){
+                if (NCache.getTime(page.getId())==-1){
+                    // System.out.println("Not Defeat Method to use BufferPool 1");
+                    file.writePage(page);
+                }
+            }
+
         } else {
             throw new NotImplementedException();
         }
@@ -279,6 +292,11 @@ public class BufferPool {
         ++cnt;
         Iterator<PageId> iter;
         iter = NCache.PageIdVector().iterator();
+        while (iter.hasNext()){
+            PageId pid = iter.next();
+            flushPage(pid);
+        }
+        iter = VCache.PageIdVector().iterator();
         while (iter.hasNext()){
             PageId pid = iter.next();
             flushPage(pid);
@@ -327,9 +345,9 @@ public class BufferPool {
             NCache.insert(pid, cnt);
             return;
         }else{
-            file.writePage(page);
-            VCache.remove(pid);
-            NCache.insert(pid, cnt);
+            // file.writePage(page);
+            // VCache.remove(pid);
+            // NCache.insert(pid, cnt);
             return;
         }
     }
@@ -341,6 +359,7 @@ public class BufferPool {
     private synchronized  void try_Evict(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        // TODO: Try to open the lock to writeback
         ++cnt;
         Page page = this.Buffer_Pool_RAM.get(pid);
         if (page == null) {
@@ -363,6 +382,12 @@ public class BufferPool {
         // not necessary for lab1|lab2
         throw new NotImplementedException();
 
+    }
+    public synchronized boolean hasPage(PageId pid){
+        // System.out.println(Buffer_Pool_RAM);
+        if (this.Buffer_Pool_RAM.containsKey(pid))
+        return true;
+        else return false;
     }
 
     /**
