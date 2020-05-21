@@ -5,6 +5,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import simpledb.IntegerAggregator.AggregatorNode;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 /**
  * TableStats represents statistics (e.g., histograms) about base tables in a
  * query. 
@@ -67,11 +70,13 @@ public class TableStats {
     static final int NUM_HIST_BINS = 100;
     private int numOfBuckets = NUM_HIST_BINS;
     private IntHistogram [] Hists;
+    private StringHistogram [] StrHists;
     private DbFile file;
     private int tableid;
     private int ioCostPerPage;
     private TupleDesc desc;
     private DbFileIterator iter;
+    private int numOfTuples = 0; 
     /**
      * Create a new TableStats object, that keeps track of statistics on each
      * column of a table
@@ -100,13 +105,57 @@ public class TableStats {
         Transaction t = new Transaction();
         iter = file.iterator(t.getId());
         this.Hists = new IntHistogram[len];
+        this.StrHists = new StringHistogram[len];
+        MinMaxNode [] nodes = new MinMaxNode[len];
         for (int i=0;i<len;++i){
-            Hists[i] = new IntHistogram(numOfBuckets, min, max);
+            nodes[i] = new MinMaxNode();
         }
-        while (iter.hasNext()){
-            Tuple tup = iter.next();
-            
+        try{
+            iter.open();
+            numOfTuples = 0;
+            while (iter.hasNext()){
+                Tuple tup = iter.next();
+                ++numOfTuples;
+                // System.out.println(tup);
+                for (int i=0;i<len;++i){
+                    if (desc.getFieldType(i)==Type.INT_TYPE){
+                        nodes[i].add(((IntField)tup.getField(i)).getValue());
+                    } else if(desc.getFieldType(i)==Type.STRING_TYPE){
+                        // No Need to get the Max or Min String of the answer
+                    } else throw new NotImplementedException(); 
+                }
+            }
+        } catch(DbException e){
+            throw new NotImplementedException();
+        } catch(TransactionAbortedException e){
+            throw new NotImplementedException();
         }
+        // System.out.println(numOfTuples);
+        for (int i=0;i<len;++i){
+            if (desc.getFieldType(i)==Type.INT_TYPE){
+                Hists[i] = new IntHistogram(numOfBuckets, nodes[i].min, nodes[i].max);
+                StrHists[i] = null;
+            }else{
+                Hists[i] = null;
+                StrHists[i] = new StringHistogram(numOfBuckets);
+            }
+        }
+        try{
+            iter.rewind();
+            while (iter.hasNext()){
+                Tuple tup = iter.next();
+                for (int i=0;i<len;++i){
+                    if (desc.getFieldType(i)==Type.INT_TYPE){
+                        Hists[i].addValue(((IntField)tup.getField(i)).getValue());
+                    }
+                }
+            }
+        } catch(DbException e){
+            throw new NotImplementedException();
+        } catch(TransactionAbortedException e){
+            throw new NotImplementedException();
+        }
+        iter.close();
     }
 
     /**
@@ -123,7 +172,7 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        return ioCostPerPage*file.numPages();
     }
 
     /**
@@ -137,7 +186,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        return (int)Math.floor(this.totalTuples()*selectivityFactor);
     }
 
     /**
@@ -170,7 +219,14 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
-        return 1.0;
+        if (desc.getFieldType(field)==Type.INT_TYPE){
+            double ans = this.Hists[field].estimateSelectivity(op, ((IntField)constant).getValue());
+            // System.out.println(((IntField)constant).getValue()+":"+ans);
+            return ans;
+        } else if (desc.getFieldType(field)==Type.STRING_TYPE){
+            return this.StrHists[field].estimateSelectivity(op, ((StringField)constant).getValue());
+        } else throw new NotImplementedException();
+        // return 1.0;
     }
 
     /**
@@ -178,7 +234,7 @@ public class TableStats {
      * */
     public int totalTuples() {
         // some code goes here
-        return 0;
+        return numOfTuples;
     }
 
 }

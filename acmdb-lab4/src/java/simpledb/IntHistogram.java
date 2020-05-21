@@ -129,7 +129,9 @@ public class IntHistogram {
             long r = findMini(i+1);
             double tmp = this.Bucks.get((int)i);
             ans += this.Bucks.getRange(i+1, buckets);
-            ans += tmp * (double)(r-i-1)/(r-l);
+            // System.out.println(ans+","+l+","+r+","+i);
+            ans += tmp * (double)(r-v-1)/(r-l);
+            // System.out.println(tmp);
             return ans/Bucks.sum();
         } else if (op==Op.GREATER_THAN_OR_EQ){
             long i = getIndex(v);
@@ -137,7 +139,7 @@ public class IntHistogram {
             long r = findMini(i+1);
             double tmp = this.Bucks.get((int)i);
             ans += this.Bucks.getRange(i+1, buckets);
-            ans += tmp * (double)(r-i)/(r-l);
+            ans += tmp * (double)(r-v)/(r-l);
             return ans/Bucks.sum();
         } else if (op==Op.LESS_THAN){
             long i = getIndex(v);
@@ -145,7 +147,7 @@ public class IntHistogram {
             long r = findMini(i+1);
             double tmp = this.Bucks.get((int)i);
             ans += this.Bucks.getRange(1, i-1);
-            ans += tmp * (double)(i-l)/(r-l);
+            ans += tmp * (double)(v-l)/(r-l);
             return ans/Bucks.sum();
         } else if (op==Op.LESS_THAN_OR_EQ){
             long i = getIndex(v);
@@ -153,7 +155,7 @@ public class IntHistogram {
             long r = findMini(i+1);
             double tmp = this.Bucks.get((int)i);
             ans += this.Bucks.getRange(1, i-1);
-            ans += tmp * (double)(i-l+1)/(r-l);
+            ans += tmp * (double)(v-l+1)/(r-l);
             return ans/Bucks.sum();
         } else if (op==Op.NOT_EQUALS){
             long i = getIndex(v);

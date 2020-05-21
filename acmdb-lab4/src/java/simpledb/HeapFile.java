@@ -116,6 +116,7 @@ public class HeapFile implements DbFile {
     /**
      * Returns the number of pages in this HeapFile.
      */
+    @Override
     public int numPages() {
         // some code goes here
         try{
