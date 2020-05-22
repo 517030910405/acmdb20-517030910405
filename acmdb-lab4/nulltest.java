@@ -12,7 +12,6 @@ public class nulltest {
         // Vector<>
         // System.out.println(x);
         System.err.println((double)(1)/(2));
-        
         // System.out.println();
         // System.out.println();
     }

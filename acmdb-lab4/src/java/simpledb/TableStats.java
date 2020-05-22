@@ -107,6 +107,8 @@ public class TableStats {
         this.Hists = new IntHistogram[len];
         this.StrHists = new StringHistogram[len];
         MinMaxNode [] nodes = new MinMaxNode[len];
+        
+        // First Scan for its max and min value
         for (int i=0;i<len;++i){
             nodes[i] = new MinMaxNode();
         }
@@ -130,7 +132,8 @@ public class TableStats {
         } catch(TransactionAbortedException e){
             throw new NotImplementedException();
         }
-        // System.out.println(numOfTuples);
+
+        // Second Scan to get the buckets
         for (int i=0;i<len;++i){
             if (desc.getFieldType(i)==Type.INT_TYPE){
                 Hists[i] = new IntHistogram(numOfBuckets, nodes[i].min, nodes[i].max);
@@ -201,6 +204,7 @@ public class TableStats {
      * */
     public double avgSelectivity(int field, Predicate.Op op) {
         // some code goes here
+        // TODO: Not sure if it is needed.
         return 1.0;
     }
 

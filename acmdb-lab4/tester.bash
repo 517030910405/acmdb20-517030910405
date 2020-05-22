@@ -34,11 +34,12 @@
 
 
 
-ant runtest -Dtest=IntHistogramTest
-ant runtest -Dtest=TableStatsTest
-# ant runtest -Dtest=PredicateTest
-# ant runtest -Dtest=PredicateTest
-# ant runtest -Dtest=PredicateTest
+# ant runtest -Dtest=IntHistogramTest
+# ant runtest -Dtest=TableStatsTest
+
+ant runtest -Dtest=JoinOptimizerTest
+
+
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=PredicateTest
