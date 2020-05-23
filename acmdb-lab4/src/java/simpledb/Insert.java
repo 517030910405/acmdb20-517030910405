@@ -93,6 +93,11 @@ public class Insert extends Operator {
             try{
                 // t.schema;
                 Tuple tup = child.next();
+                if (!tup.schema.AllEequals(f.getTupleDesc())){
+                    System.err.println("Insert.fetchNext: Lijiasen FieldName Notice");
+                    System.err.println(tup.schema);
+                    System.err.println(f.getTupleDesc());
+                }
                 tup.schema = f.getTupleDesc();
                 Database.getBufferPool().insertTuple(t, tableId, tup);
             } catch(IOException e){

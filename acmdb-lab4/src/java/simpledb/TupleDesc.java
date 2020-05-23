@@ -55,7 +55,15 @@ public class TupleDesc implements Serializable {
             // return (fieldName.equals(other.fieldName))&&(fieldType.equals(other.fieldType));
             return (fieldType.equals(other.fieldType));
         }
-        
+
+        public boolean AllEequals(Object o){
+            if (this == o) return true;
+            if (o==null || o.getClass()!= this.getClass()) return false;
+            TDItem other = (TDItem)o;
+            return (fieldName.equals(other.fieldName))&&(fieldType.equals(other.fieldType));
+            // return (fieldType.equals(other.fieldType));
+        }
+
         @Override
         public int hashCode(){
             if (hashCodeBuffer!=-1) return hashCodeBuffer;
@@ -264,6 +272,25 @@ public class TupleDesc implements Serializable {
         TupleDesc other = (TupleDesc)o;
         return this.tupleDescItems.equals(other.tupleDescItems);
     }
+
+    public boolean AllEequals(Object o) {
+        // some code goes here
+        if (this == o) return true;
+        if (o==null || o.getClass()!= this.getClass()) return false;
+        TupleDesc other = (TupleDesc)o;
+        if (!this.tupleDescItems.equals(other.tupleDescItems)) return false;
+        for (int i=0;i<tupleDescItems.size();++i){
+            if (tupleDescItems.get(i)==null && other.tupleDescItems.get(i)!=null) return false;
+            else if (tupleDescItems.get(i)!=null && other.tupleDescItems.get(i)==null) return false;
+            else if (tupleDescItems.get(i)==null&&other.tupleDescItems.get(i)==null){}
+            else if (! tupleDescItems.get(i).AllEequals(other.tupleDescItems.get(i))){
+                return false;
+            }
+        }
+        return true;
+        // return this.tupleDescItems.equals(other.tupleDescItems);
+    }
+
 
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
