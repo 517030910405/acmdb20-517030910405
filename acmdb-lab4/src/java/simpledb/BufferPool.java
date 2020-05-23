@@ -216,6 +216,11 @@ public class BufferPool {
         if (Database.getCatalog().getDatabaseFile(tableId) instanceof DbFile){
             DbFile file = Database.getCatalog().getDatabaseFile(tableId);
             // Field field = t.getField(file.keyField());
+            if (!t.schema.AllEequals(file.getTupleDesc())){
+                System.err.println("BufferPool.insertTuple: Lijiasen FieldName Notice");
+                System.err.println(t.schema);
+                System.err.println(file.getTupleDesc());
+            }
             ArrayList<Page> dpage = 
             file.insertTuple(tid, t);
             for (PageId pageid: VCache.PageIdVector()){
