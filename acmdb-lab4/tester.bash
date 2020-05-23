@@ -27,7 +27,7 @@
 # ant runtest -Dtest=HeapPageWriteTest 
 # ant runtest -Dtest=HeapFileWriteTest
 # ant runtest -Dtest=InsertTest
-# ant runsystest -Dtest=InsertTest 
+ant runsystest -Dtest=InsertTest 
 # ant runsystest -Dtest=DeleteTest 
 # ant runtest -Dtest=BufferPoolWriteTest
 
@@ -37,10 +37,10 @@
 # ant runtest -Dtest=IntHistogramTest
 # ant runtest -Dtest=TableStatsTest
 
-ant runtest -Dtest=JoinOptimizerTest
+# ant runtest -Dtest=JoinOptimizerTest
 
 
-# ant runtest -Dtest=PredicateTest
+# ant runsystest -Dtest=QueryTest
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=PredicateTest

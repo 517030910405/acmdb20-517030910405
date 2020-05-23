@@ -42,9 +42,12 @@ public class Join extends Operator {
      * @return
      *       the field name of join field1. Should be quantified by
      *       alias or table name.
+     *       Jiasen Comment: Should be but you can return it directly,
+     *          because DbIter has already been quantified
      * */
     public String getJoinField1Name() {
         // some code goes here
+        // System.err.println(child1.getTupleDesc().getFieldName(p.getField1()));
         return child1.getTupleDesc().getFieldName(p.getField1());
     }
 
@@ -55,6 +58,7 @@ public class Join extends Operator {
      * */
     public String getJoinField2Name() {
         // some code goes here
+        // System.err.println(child2.getTupleDesc().getFieldName(p.getField2()));
         return child2.getTupleDesc().getFieldName(p.getField2());
     }
 
@@ -64,6 +68,7 @@ public class Join extends Operator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
+        // System.err.println(tupleDesc);
         if (tupleDesc==null){
             tupleDesc = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
         }

@@ -5,6 +5,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 // import jdk.internal.util.xml.impl.Pair;
 
 /**
@@ -50,7 +52,8 @@ public class TupleDesc implements Serializable {
             if (this == o) return true;
             if (o==null || o.getClass()!= this.getClass()) return false;
             TDItem other = (TDItem)o;
-            return (fieldName.equals(other.fieldName))&&(fieldType.equals(other.fieldType));
+            // return (fieldName.equals(other.fieldName))&&(fieldType.equals(other.fieldType));
+            return (fieldType.equals(other.fieldType));
         }
         
         @Override
@@ -119,7 +122,9 @@ public class TupleDesc implements Serializable {
         tupleDescItems = new Vector<>(typeAr.length);
         for (int i=0;i<typeAr.length;++i){
             tupleDescItems.add(new TDItem(typeAr[i],fieldAr[i]));
+            // System.err.print(fieldAr[i]+",");
         }
+        // System.err.println();
         updateInfo();
     }
 
@@ -172,6 +177,7 @@ public class TupleDesc implements Serializable {
         // some code goes here
         if (i<0 || i >= numFields()) 
             throw new NoSuchElementException("index="+i+";size="+numFields());
+        // System.err.println("Lijiasen: "+tupleDescItems.get(i).fieldName);
         return tupleDescItems.get(i).fieldName;
     }
 
@@ -203,10 +209,13 @@ public class TupleDesc implements Serializable {
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
+        // System.err.println("name:"+name);
+        // System.err.println(this.FieldNameToIndexMap);
         if (FieldNameToIndexMap==null) FieldNameToIndexMap = new ConcurrentHashMap<>();
         if (name==null){ throw new NoSuchElementException(); }
         Integer ans = FieldNameToIndexMap.get(name);
         if (ans==null){ throw new NoSuchElementException(); }
+        // System.err.println("Lijiasen:"+name+","+ans);
         return ans;
     }
 

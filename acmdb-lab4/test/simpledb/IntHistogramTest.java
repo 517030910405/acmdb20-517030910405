@@ -35,7 +35,6 @@ public class IntHistogramTest {
 		// Allow considerable leeway for rounding error, though 
 		// (Java double's are good to 15 or so significant figures)
 		Assert.assertTrue(selectivity > 0.99);
-		// System.out.println(selectivity);
 	}
 	
 	/**
@@ -54,12 +53,11 @@ public class IntHistogramTest {
 		// Even with just 10 bins and 50 values,
 		// the selectivity for this particular value should be at most 0.2.
 		Assert.assertTrue(h.estimateSelectivity(Op.EQUALS, -33) < 0.3);
-		// System.out.println(h.estimateSelectivity(Op.EQUALS, -33));
+		
 		// And it really shouldn't be 0.
 		// Though, it could easily be as low as 0.02, seeing as that's
 		// the fraction of elements that actually are equal to -33.
 		Assert.assertTrue(h.estimateSelectivity(Op.EQUALS, -33) > 0.001);
-		// System.out.println(h.estimateSelectivity(Op.EQUALS, -33));
 	}
 	
 	/**
@@ -77,8 +75,6 @@ public class IntHistogramTest {
 		// be conservative in case of alternate implementations
 		Assert.assertTrue(h.estimateSelectivity(Op.EQUALS, 3) > 0.8);
 		Assert.assertTrue(h.estimateSelectivity(Op.EQUALS, 8) < 0.001);
-		// System.out.println(h.estimateSelectivity(Op.EQUALS, 3));
-		// System.out.println(h.estimateSelectivity(Op.EQUALS, 8));
 	}
 	
 	/**
@@ -99,11 +95,6 @@ public class IntHistogramTest {
 		Assert.assertTrue(h.estimateSelectivity(Op.GREATER_THAN, 2) > 0.6);
 		Assert.assertTrue(h.estimateSelectivity(Op.GREATER_THAN, 4) < 0.4);
 		Assert.assertTrue(h.estimateSelectivity(Op.GREATER_THAN, 12) < 0.001);
-		// System.out.println("OpGreater");
-		// System.out.println(h.estimateSelectivity(Op.GREATER_THAN, -1));
-		// System.out.println(h.estimateSelectivity(Op.GREATER_THAN, 2));
-		// System.out.println(h.estimateSelectivity(Op.GREATER_THAN, 4));
-		// System.out.println(h.estimateSelectivity(Op.GREATER_THAN, 12));
 	}
 	
 	/**
@@ -161,7 +152,6 @@ public class IntHistogramTest {
 		h.addValue(10);
 		
 		// Be conservative in case of alternate implementations
-		// System.out.println(h.estimateSelectivity(Op.LESS_THAN_OR_EQ, -1));
 		Assert.assertTrue(h.estimateSelectivity(Op.LESS_THAN_OR_EQ, -1) < 0.001);
 		Assert.assertTrue(h.estimateSelectivity(Op.LESS_THAN_OR_EQ, 2) < 0.4);
 		Assert.assertTrue(h.estimateSelectivity(Op.LESS_THAN_OR_EQ, 3) > 0.45);

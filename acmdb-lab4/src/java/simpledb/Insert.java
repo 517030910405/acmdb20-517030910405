@@ -37,8 +37,10 @@ public class Insert extends Operator {
         this.child = child;
         this.tableId = tableId;
         this.f = Database.getCatalog().getDatabaseFile(tableId);
-        if (!f.getTupleDesc().equals(child.getTupleDesc())) 
-          throw new DbException("Different TD （づ￣3￣）づ╭❤～");
+        if (!f.getTupleDesc().equals(child.getTupleDesc())) {
+            System.err.println(f.getTupleDesc()+","+child.getTupleDesc());
+            throw new DbException("Different TD （づ￣3￣）づ╭❤～");
+        }
         Type [] TDtype = new Type[1];
         TDtype[0] = Type.INT_TYPE;
         this.TD = new TupleDesc(TDtype);
@@ -89,7 +91,10 @@ public class Insert extends Operator {
         int cnt = 0;
         while (child.hasNext()){
             try{
-                Database.getBufferPool().insertTuple(t, tableId, child.next());
+                // t.schema;
+                Tuple tup = child.next();
+                tup.schema = f.getTupleDesc();
+                Database.getBufferPool().insertTuple(t, tableId, tup);
             } catch(IOException e){
                 System.out.println(e);
                 throw new NotImplementedException();

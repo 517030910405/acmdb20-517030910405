@@ -15,6 +15,7 @@ public class SeqScan implements DbIterator {
     private int tabID;
     private String tabAlias;
     private DbFileIterator dbfileTupIterator;
+    private TupleDesc myTd;
     /**
      * Creates a sequential scan over the specified table as a part of the
      * specified transaction.
@@ -36,6 +37,7 @@ public class SeqScan implements DbIterator {
         transactionId = tid;
         tabID = tableid;
         tabAlias = tableAlias;
+        reset(tableid, tableAlias);
     }
 
     /**
@@ -73,6 +75,20 @@ public class SeqScan implements DbIterator {
         // some code goes here
         tabID = tableid;
         tabAlias = tableAlias;
+
+        myTd = Database.getCatalog().getTupleDesc(tableid);
+		String[] newNames = new String[myTd.numFields()];
+		Type[] newTypes = new Type[myTd.numFields()];
+		for (int i = 0; i < myTd.numFields(); i++) {
+			String name = myTd.getFieldName(i);
+			Type t = myTd.getFieldType(i);
+
+			newNames[i] = tableAlias + "." + name;
+			newTypes[i] = t;
+        }
+		myTd = new TupleDesc(newTypes, newNames);
+        // System.err.println();
+
     }
 
     public SeqScan(TransactionId tid, int tableid) {
@@ -97,7 +113,8 @@ public class SeqScan implements DbIterator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return Database.getCatalog().getTupleDesc(tabID);
+        // return Database.getCatalog().getTupleDesc(tabID);
+        return myTd;
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {

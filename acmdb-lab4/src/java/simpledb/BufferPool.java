@@ -380,8 +380,14 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        throw new NotImplementedException();
-
+        // throw new NotImplementedException();
+        Vector<Page> TidPages = new Vector<>(2);
+        TidPages.addAll(this.Buffer_Pool_RAM.values());
+        for (Page page : TidPages){
+            if (page.isDirty()!=null && page.isDirty().equals(tid)){
+                flushPage(page.getId());
+            }
+        }
     }
     public synchronized boolean hasPage(PageId pid){
         // System.out.println(Buffer_Pool_RAM);

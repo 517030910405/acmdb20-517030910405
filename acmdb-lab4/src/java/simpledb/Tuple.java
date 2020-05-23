@@ -16,7 +16,7 @@ public class Tuple implements Serializable {
      * Variables
      */
     private static final long serialVersionUID = 1L;
-    private TupleDesc schema = null;
+    public TupleDesc schema = null;
     private RecordId recordId = null;
     private Field[] tuple_record = null;
     

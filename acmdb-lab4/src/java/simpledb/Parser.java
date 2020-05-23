@@ -542,6 +542,9 @@ public class Parser {
                     }
                 } catch (Throwable a) {
                     // Whenever error happens, abort the current transaction
+                    System.err.println("Lijiasen:"+a);
+                    a.printStackTrace();
+                    
                     if (curtrans != null) {
                         curtrans.abort();
                         System.out.println("Transaction "

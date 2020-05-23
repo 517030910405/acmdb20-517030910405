@@ -6,7 +6,8 @@ import javax.swing.*;
 import javax.swing.tree.*;
 
 import simpledb.Predicate.Op;
-
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+// import simpledb.LogicalJoinNode;
 /**
  * The JoinOptimizer class is responsible for ordering a series of joins
  * optimally, and for selecting the best instantiation of a join for a given
@@ -212,6 +213,39 @@ public class JoinOptimizer {
         return els;
 
     }
+    /**
+     * Helper method to enumerate all of the subsets of a given size of a
+     * specified vector.
+     * Faster Implementation by Jiasen Li
+     * 
+     * @param v
+     *            The vector whose subsets are desired
+     * @param size
+     *            The size of the subsets of interest
+     * @return a set of all subsets of the specified size
+     */
+    @SuppressWarnings("unchecked")
+    public <T> Set<Set<T>> enumerateSubsets2(Vector<T> v, int size) {
+        Set<Set<T>> els = new HashSet<Set<T>>();
+        // els.add(new HashSet<T>());
+        // Iterator<Set> it;
+        // long start = System.currentTimeMillis();
+        long status = 0;
+        int len = v.size();
+        if (len>40) throw new NotImplementedException();
+        for (status = 0;status<( ((long)1)<<len );++status){
+            if (Long.bitCount(status)==size){
+                HashSet<T> item = new HashSet<>();
+                for (int i=0;i<len;++i){
+                    if (((status>>i)&1)==1){
+                        item.add(v.get(i));
+                    }
+                }
+                els.add(item);
+            }
+        }
+        return els;
+    }
 
     /**
      * Compute a logical, reasonably efficient join on the specified tables. See
@@ -241,7 +275,29 @@ public class JoinOptimizer {
 
         // some code goes here
         //Replace the following
-        return joins;
+        PlanCache pc = new PlanCache();
+        Vector<LogicalJoinNode> ans = null;
+        for (int i = 1; i <= joins.size();++i){
+            Set< Set<LogicalJoinNode> > tmp = this.enumerateSubsets2(joins, i);
+            // this.computeCostAndCardOfSubplan(stats, filterSelectivities, joinToRemove, joinSet, bestCostSoFar, pc)
+            for (Set<LogicalJoinNode> joinSet: tmp){
+                // LogicalJoinNode [] ttmp = (LogicalJoinNode[])joinSet.toArray();
+                double bestCostSoFar = 1e20;
+                for (int j=0;j<joins.size();++j) if (joinSet.contains(joins.get(j))){
+                    CostCard cc =  this.computeCostAndCardOfSubplan(stats, filterSelectivities, joins.get(j), joinSet, bestCostSoFar, pc);
+                    if (cc!=null){
+                        bestCostSoFar = Double.min(bestCostSoFar, cc.cost);
+                        pc.addPlan(joinSet, cc.cost, cc.card, cc.plan);
+                    }
+                }
+                if (i==joins.size()){
+                    ans = pc.getOrder(joinSet);
+                }
+                // this.computeCostAndCardOfSubplan(stats, filterSelectivities, joinToRemove, joinSet, bestCostSoFar, pc)
+            }            
+        }
+        
+        return ans;
     }
 
     // ===================== Private Methods =================================
