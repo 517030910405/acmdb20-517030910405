@@ -711,10 +711,13 @@ public class BTreeFile implements DbFile {
 		Iterator<BTreeEntry> it = page.iterator();
 		BTreePageId pid = page.getId();
 		BTreeEntry e = null;
+		// int ljscnt = 0;
 		while(it.hasNext()) {
 			e = it.next();
 			updateParentPointer(tid, dirtypages, pid, e.getLeftChild());
+			// ++ljscnt;
 		}
+		// System.err.println("Modify:"+ljscnt+","+Database.getBufferPool().numOfPages);
 		if(e != null) {
 			updateParentPointer(tid, dirtypages, pid, e.getRightChild());
 		}
@@ -748,7 +751,7 @@ public class BTreeFile implements DbFile {
 			Page p = Database.getBufferPool().getPage(tid, pid, perm);
 			if(perm == Permissions.READ_WRITE) {
 				//markDirty lijiasen added
-				p.markDirty(true, tid);
+				// p.markDirty(true, tid);
 				dirtypages.put(pid, p);
 			}
 			return p;
@@ -1054,7 +1057,10 @@ public class BTreeFile implements DbFile {
 			BTreeEntry parentEntry) throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
 		// System.out.println("StealLeft");
+		// int lijscnt = 0;
 		while (page.getNumEntries()+1<leftSibling.getNumEntries()){
+			// ++lijscnt;
+			// System.err.println("Lijiasen Cnt: "+lijscnt);
 			Iterator<BTreeEntry> iter1 = page.iterator();
 			Iterator<BTreeEntry> iter2 = leftSibling.reverseIterator();
 			BTreeEntry steal = iter2.next();

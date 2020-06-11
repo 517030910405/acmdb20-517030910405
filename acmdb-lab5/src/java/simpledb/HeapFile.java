@@ -134,7 +134,7 @@ public class HeapFile implements DbFile {
         ArrayList<Page> ans = new ArrayList<>();
         HashMap<PageId,Page> dirtypages = new HashMap<>();
         int numOfPages = this.numPages();
-        for (int i=0;i<numOfPages;++i){
+        for (int i=0;i<this.numPages();++i){
             Page page = this.getPage(tid, dirtypages, 
                 new HeapPageId(this.getId(), i), Permissions.READ_ONLY);
             HeapPage hpage = (HeapPage) page;
@@ -146,18 +146,22 @@ public class HeapFile implements DbFile {
                 ans.addAll(dirtypages.values());
                 return ans;
             }
+            Database.getBufferPool().returnReadLock(tid, new HeapPageId(this.getId(), i));
         }
-        HeapPageId pid = new HeapPageId(this.getId(), numOfPages);
-        HeapPage page = new HeapPage(pid,
-            HeapPage.createEmptyPageData());
-        page.insertTuple(t);
-        this.writePage(page);
-        page = (HeapPage)this.getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
-        if (page.getNumEmptySlots()!=page.numSlots-1){
-            throw new AssertionError("file open and close error by lijiasen");
+        synchronized(this){
+            HeapPageId pid = new HeapPageId(this.getId(), this.numPages());
+            Database.getBufferPool().getWriteLock(tid, pid);
+            HeapPage page = new HeapPage(pid,
+                HeapPage.createEmptyPageData());
+            this.writePage(page);
+            page = (HeapPage)this.getPage(tid, dirtypages, pid, Permissions.READ_WRITE);
+            if (page.getNumEmptySlots()!=page.numSlots){
+                throw new AssertionError("file open and close error by lijiasen");
+            }
+            page.insertTuple(t);
+            ans.addAll(dirtypages.values());
+            return ans;
         }
-        ans.addAll(dirtypages.values());
-        return ans;
         // throw new AssertionError();
         // return null;
         // not necessary for lab1
@@ -194,7 +198,7 @@ public class HeapFile implements DbFile {
                 PageIndex = 0;
                 TableId = getId();
                 pageTupleIterator = ( (HeapPage)Database.getBufferPool().
-                    getPage(tid, new HeapPageId(TableId, PageIndex), null) ).iterator();              
+                    getPage(tid, new HeapPageId(TableId, PageIndex), Permissions.READ_ONLY) ).iterator();              
             }
         
             @Override
@@ -202,7 +206,7 @@ public class HeapFile implements DbFile {
                 PageIndex = 0;
                 TableId = getId();
                 pageTupleIterator = ( (HeapPage)Database.getBufferPool().
-                    getPage(tid, new HeapPageId(TableId, PageIndex), null) ).iterator();
+                    getPage(tid, new HeapPageId(TableId, PageIndex), Permissions.READ_ONLY) ).iterator();
             }
         
             @Override
@@ -219,10 +223,11 @@ public class HeapFile implements DbFile {
                 if (pageTupleIterator.hasNext()){
                     return true;
                 } else{
+                    Database.getBufferPool().returnReadLock(tid, new HeapPageId(TableId,PageIndex));
                     int num_Pages = numPages();
-                    for (int i=PageIndex+1;i<num_Pages;++i){
+                    for (int i=PageIndex+1;i<numPages();++i){
                         pageTupleIterator = ( (HeapPage)Database.getBufferPool().
-                        getPage(tid, new HeapPageId(TableId, i), null) ).iterator();
+                        getPage(tid, new HeapPageId(TableId, i), Permissions.READ_ONLY) ).iterator();
                         if (pageTupleIterator.hasNext()){
                             PageIndex = i;
                             return true;
@@ -268,12 +273,46 @@ public class HeapFile implements DbFile {
 		else {
 			Page p = Database.getBufferPool().getPage(tid, pid, perm);
 			if(perm == Permissions.READ_WRITE) {
-                p.markDirty(true, tid);
+                // p.markDirty(true, tid);
 				dirtypages.put(pid, p);
 			}
 			return p;
 		}
 	}
+	// /**
+	//  * Method to encapsulate the process of creating a new page.  It reuses old pages if possible,
+	//  * and creates a new page if none are available.  It wipes the page on disk and in the cache and 
+	//  * returns a clean copy locked with read-write permission
+	//  * 
+	//  * @param tid - the transaction id
+	//  * @param dirtypages - the list of dirty pages which should be updated with all new dirty pages
+	//  * @param pgcateg - the BTreePageId category of the new page.  Either LEAF, INTERNAL, or HEADER
+	//  * @return the new empty page
+	//  * @see #getEmptyPageNo(TransactionId, HashMap)
+	//  * @see #setEmptyPage(TransactionId, HashMap, int)
+	//  * 
+	//  * @throws DbException
+	//  * @throws IOException
+	//  * @throws TransactionAbortedException
+	//  */
+	// private Page getEmptyPage(TransactionId tid, HashMap<PageId, Page> dirtypages, int pgcateg)
+	// 		throws DbException, IOException, TransactionAbortedException {
+	// 	// create the new page
+	// 	int emptyPageNo = getEmptyPageNo(tid, dirtypages);
+	// 	BTreePageId newPageId = new BTreePageId(tableid, emptyPageNo, pgcateg);
+		
+	// 	// write empty page to disk
+	// 	RandomAccessFile rf = new RandomAccessFile(f, "rw");
+	// 	rf.seek(BTreeRootPtrPage.getPageSize() + (emptyPageNo-1) * BufferPool.getPageSize());
+	// 	rf.write(BTreePage.createEmptyPageData());
+	// 	rf.close();
+		
+	// 	// make sure the page is not in the buffer pool	or in the local cache		
+	// 	Database.getBufferPool().discardPage(newPageId);
+	// 	dirtypages.remove(newPageId);
+		
+	// 	return getPage(tid, dirtypages, newPageId, Permissions.READ_WRITE);
+	// }
 
 }
 

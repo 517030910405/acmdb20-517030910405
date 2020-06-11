@@ -1,4 +1,5 @@
-# ant clean
+ant clean
+ant
 # ant runsystest -Dtest=EvictionTest
 # ant runtest -Dtest=PredicateTest
 # ant runtest -Dtest=BTreeFileReadTest
@@ -27,7 +28,7 @@
 # ant runtest -Dtest=HeapPageWriteTest 
 # ant runtest -Dtest=HeapFileWriteTest
 # ant runtest -Dtest=InsertTest
-ant runsystest -Dtest=InsertTest 
+# ant runsystest -Dtest=InsertTest 
 # ant runsystest -Dtest=DeleteTest 
 # ant runtest -Dtest=BufferPoolWriteTest
 
@@ -42,6 +43,16 @@ ant runsystest -Dtest=InsertTest
 
 # ant runsystest -Dtest=QueryTest
 # ant runtest -Dtest=PredicateTest
-# ant runtest -Dtest=PredicateTest
-# ant runtest -Dtest=PredicateTest
+
+
+
+
+# ant runtest -Dtest=LockingTest
+# ant runtest -Dtest=TransactionTest
+# ant runsystest -Dtest=AbortEvictionTest
+# ant runsystest -Dtest=TransactionTest
+# ant runtest -Dtest=DeadlockTest
+# ant runtest -Dtest=BTreeDeadlockTest
+# ant runtest -Dtest=BTreeNextKeyLockingTest
+ant runsystest -Dtest=BTreeTest
 # ant runtest -Dtest=PredicateTest

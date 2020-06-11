@@ -15,6 +15,10 @@ import java.util.Vector;
 // import java.util.NoSuchElementException;
 // import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -39,12 +43,14 @@ public class BufferPool {
     /** Default number of pages passed to the constructor. This is used by
     other classes. BufferPool should use the numPages argument to the
     constructor instead. */
-    public static final int DEFAULT_PAGES = 50;
+    public static final int DEFAULT_PAGES = 1000;
     public int numOfPages = DEFAULT_PAGES;
 
     // private Vector<Page> Buffer_Pool_RAM = null;
     private ConcurrentHashMap<PageId, Page> Buffer_Pool_RAM = null;
-
+    public ConcurrentHashMap<PageId, LockWithTransaction> LockPool = null;
+    public ConcurrentHashMap<TransactionId, PageId> waitForPage = null;
+    // public ConcurrentHashMap<PageId, HashSet<TransactionId> > LockCount = null;
     // private ConcurrentHashMap<Integer, PageId> BufferPoolPageID = null;
     // private ConcurrentHashMap<PageId, Integer> indexInList = null;
     // private ConcurrentHashMap<PageId, Page> VictimCache = null;
@@ -54,7 +60,11 @@ public class BufferPool {
     private PidTimeStamp NCache,VCache;
 
     private int cnt = 0;
-    
+
+    private Object OperatePageLock = new Object();
+    private Object atomicOpLock = new Object();
+    private Object increaseCNT = new Object();
+    // private Object OperateLockLock = new Object();
     /**
      * Evict the next page
      * Using LRU
@@ -79,7 +89,10 @@ public class BufferPool {
         // rand = new Random();
         VCache = new PidTimeStamp();
         NCache = new PidTimeStamp();
-
+        LockPool = new ConcurrentHashMap<>();
+        waitForPage = new ConcurrentHashMap<>();
+        // java.util.concurrent.locks.ReentrantReadWriteLock;
+        // ReadWriteLock lc =  new ReentrantReadWriteLock();
         // BufferPoolPageID = new ConcurrentHashMap<>();
         // indexInList = new ConcurrentHashMap<>();
         // VictimCache = new ConcurrentHashMap<>();
@@ -100,6 +113,101 @@ public class BufferPool {
     }
 
     /**
+     * Jiasen Method</p>
+     * Check there is a lock for pid </p>
+     * Atomic Function
+     * @param pid
+     */
+    public void checkLockIsThere(PageId pid){
+        synchronized (this.atomicOpLock){
+            if (this.LockPool.get(pid)==null){
+                this.LockPool.put(pid, new LockWithTransaction(pid));
+            }
+        }
+    }
+
+    /**
+     * Jiasen Method</p>
+     * get lock
+     * @param tid
+     * @param pid
+     */
+    public void getWriteLock(TransactionId tid, PageId pid)throws TransactionAbortedException{
+        checkLockIsThere(pid);
+        this.LockPool.get(pid).writelock(tid);
+    }
+    
+    /**
+     * Jiasen Method</p>
+     * get lock
+     * @param tid
+     * @param pid
+     */
+    public void getReadLock(TransactionId tid, PageId pid)throws TransactionAbortedException{
+        checkLockIsThere(pid);
+        this.LockPool.get(pid).readlock(tid);
+        // LockWithTransaction lockWithTransaction = this.LockPool.get(pid);
+        // lockWithTransaction.lock.readLock().lock();
+        // lockWithTransaction.tIds.add(tid);
+        // lockWithTransaction.isWrite = false;
+    }
+
+    /**
+     * Jiasen Method</p>
+     * return lock
+     * @param tid
+     * @param pid
+     */
+    public void returnWriteLock(TransactionId tid, PageId pid){
+        checkLockIsThere(pid);
+        synchronized(this){
+            this.LockPool.get(pid).unlock(tid);
+            if (this.VCache.getTime(pid)!=-1){
+                int cnt = this.IncreaseCount();
+                this.VCache.remove(pid);
+                this.NCache.insert(pid, cnt);
+            }
+        }
+        // LockWithTransaction lockWithTransaction = this.LockPool.get(pid);
+        // lockWithTransaction.tIds.remove(tid);
+        // lockWithTransaction.lock.writeLock().unlock();
+    }
+
+    /**
+     * Jiasen Method</p>
+     * return lock
+     * @param tid
+     * @param pid
+     */
+    public void returnReadLock(TransactionId tid, PageId pid){
+        checkLockIsThere(pid);
+        synchronized(this){
+            this.LockPool.get(pid).unlockread(tid);
+            if (this.VCache.getTime(pid)!=-1){
+                int cnt = this.IncreaseCount();
+                this.VCache.remove(pid);
+                this.NCache.insert(pid, cnt);
+            }
+        }
+        // LockWithTransaction lockWithTransaction = this.LockPool.get(pid);
+        // lockWithTransaction.tIds.remove(tid);
+        // lockWithTransaction.lock.readLock().unlock();
+    }
+    // public boolean checkReadLockAvalible(PageId pid){
+    //     checkLockIsThere(pid);
+    //     synchronized(this.atomicOpLock){
+    //     }
+    //     return false;
+    // }
+
+    public int IncreaseCount(){
+        synchronized(this.increaseCNT){
+            ++cnt;
+            return cnt;
+        }
+    }
+
+    /**
      * Retrieve the specified page with the associated permissions.
      * Will acquire a lock and may block if that lock is held by another
      * transaction.
@@ -114,35 +222,62 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException{
         // if (true)throw new NotImplementedException();
         // some code goes here
-        ++cnt;
         if (pid == null) throw new DbException("pid is null");
-        Page ans = Buffer_Pool_RAM.get(pid);
-        if (ans!=null) {
-            NCache.insert(pid, cnt);
-            VCache.remove(pid);
-            return ans;
+
+        if (perm==Permissions.READ_WRITE){
+            this.getWriteLock(tid, pid);
+        } else if (perm==Permissions.READ_ONLY){
+            this.getReadLock(tid, pid);
+        } else{
+            System.err.println("Lijs: BufferPool Permission Exception"+perm);
+            throw new NotImplementedException();
         }
-        // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages+", "+NCache.size());
-        // new page
-        if (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
-            // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages);
-            while (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
-                try{
-                    EvictNext();
-                } catch(IOException e){
-                    throw new NotImplementedException();
+        // ++cnt;
+        // synchronized(this.LockPool.get(pid).getPageLock){
+        synchronized(this){
+            int cnt = this.IncreaseCount();
+            Page ans;
+        
+            ans = Buffer_Pool_RAM.get(pid);
+            if (ans!=null) {
+                NCache.insert(pid, cnt);
+                VCache.remove(pid);
+                if(perm == Permissions.READ_WRITE) {
+                    ans.markDirty(true, tid);
+                }
+                return ans;
+            }
+            
+            // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages+", "+NCache.size());
+            // new page
+            if (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
+                // System.out.println(Buffer_Pool_RAM.size()+", "+this.numOfPages);
+                while (Buffer_Pool_RAM.size()>=this.numOfPages&&NCache.size()>0){
+                    try{
+                        EvictNext();
+                    } catch(IOException e){
+                        throw new NotImplementedException();
+                    }
+                }
+                if (Buffer_Pool_RAM.size()>=Integer.max(this.numOfPages,0)){
+                    // System.err.println("Lijs Error: Buffer Pool Exceeding, Size = "+Buffer_Pool_RAM.size());
+                    throw new DbException("Lijs Error: Buffer Pool Exceeding");
                 }
             }
+            ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+            Buffer_Pool_RAM.put(pid, ans);
+            // LockPool.put(pid, new ReentrantReadWriteLock());
+            NCache.insert(pid, cnt);
+            VCache.remove(pid);
+            if(perm == Permissions.READ_WRITE) {
+                ans.markDirty(true, tid);
+            }
+            return ans;
         }
-        ans = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
-        Buffer_Pool_RAM.put(pid, ans);
-        NCache.insert(pid, cnt);
-        VCache.remove(pid);
-        return ans;
     }
 
     /**
@@ -158,6 +293,9 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // throw new NotImplementedException();
+        checkLockIsThere(pid);
+        // this.LockPool.get(pid).unlock(tid);
+        returnWriteLock(tid, pid);
     }
 
     /**
@@ -169,6 +307,7 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // throw new NotImplementedException();
+        transactionComplete(tid,true);
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
@@ -176,7 +315,7 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // throw new NotImplementedException();
-        return false;
+        return LockPool.get(p).holdsLock(tid);
     }
 
     /**
@@ -191,6 +330,29 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // throw new NotImplementedException();
+        // Buffer_Pool_RAM.keySet().iterator();
+        Vector <PageId> PIDs = new Vector<>();
+        for (Iterator<PageId> IterPid = LockPool.keySet().iterator();IterPid.hasNext();){
+            PageId pid = IterPid.next();
+            PIDs.add(pid);
+        }
+        for (Iterator<PageId> IterPid = Buffer_Pool_RAM.keySet().iterator();IterPid.hasNext();){
+            PageId pid = IterPid.next();
+            if (!LockPool.containsKey(pid))PIDs.add(pid);
+        }
+        for (Iterator<PageId> IterPid = PIDs.iterator();IterPid.hasNext();){
+            PageId pid = IterPid.next();
+            if (holdsLock(tid, pid)){
+                if (Buffer_Pool_RAM.containsKey(pid)&&tid.equals(Buffer_Pool_RAM.get(pid).isDirty())){
+                    if (commit){
+                        flushPage(pid);
+                    } else{
+                        discardPage(pid);
+                    }
+                }
+                releasePage(tid, pid);
+            }
+        }
     }
 
     /**
@@ -223,20 +385,33 @@ public class BufferPool {
             }
             ArrayList<Page> dpage = 
             file.insertTuple(tid, t);
-            for (PageId pageid: VCache.PageIdVector()){
-                //TODO: flush?  Please Check the lock before writeback
-                Page page = Buffer_Pool_RAM.get(pageid);
-                if (VCache.getTime(page.getId())!=-1){
-                    file.writePage(page);
-                    discardPage(page.getId());
-                }
-            }
+            // for (PageId pageid: VCache.PageIdVector()){
+            //     //TODO: flush?  Please Check the lock before writeback
+            //     Page page = Buffer_Pool_RAM.get(pageid);
+            //     if (VCache.getTime(page.getId())!=-1){
+            //         file.writePage(page);
+            //         discardPage(page.getId());
+            //     }
+            // }
+            // for (Page page:dpage){
+            //     if (NCache.getTime(page.getId())==-1){
+            //         // System.out.println("Not Defeat Method to use BufferPool 1");
+            //         file.writePage(page);
+            //     }
+            // }
             for (Page page:dpage){
-                if (NCache.getTime(page.getId())==-1){
+                if (!Buffer_Pool_RAM.containsKey(page.getId())){
                     // System.out.println("Not Defeat Method to use BufferPool 1");
-                    file.writePage(page);
+                    // file.writePage(page);
+                    getWriteLock(tid, page.getId());
+                    int cnt = IncreaseCount();
+                    Buffer_Pool_RAM.put(page.getId(), page);
+                    NCache.insert(page.getId(), cnt);
+                    page.markDirty(true, tid);
+
                 }
             }
+
             return;
         } else{
             throw new NotImplementedException();
@@ -265,18 +440,29 @@ public class BufferPool {
         if (file instanceof DbFile){
             ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
             // for (Page page: dirtyPages){
-            for (PageId pageid: VCache.PageIdVector()){
-                //TODO: flush? 
-                Page page = Buffer_Pool_RAM.get(pageid);
-                if (VCache.getTime(page.getId())!=-1){
-                    file.writePage(page);
-                    discardPage(page.getId());
-                }
-            }
+            // for (PageId pageid: VCache.PageIdVector()){
+            //     //TODO: flush? 
+            //     Page page = Buffer_Pool_RAM.get(pageid);
+            //     if (VCache.getTime(page.getId())!=-1){
+            //         file.writePage(page);
+            //         discardPage(page.getId());
+            //     }
+            // }
+            // for (Page page:dirtyPages){
+            //     if (NCache.getTime(page.getId())==-1){
+            //         // System.out.println("Not Defeat Method to use BufferPool 1");
+            //         file.writePage(page);
+            //     }
+            // }
             for (Page page:dirtyPages){
-                if (NCache.getTime(page.getId())==-1){
+                if (!Buffer_Pool_RAM.containsKey(page.getId())){
                     // System.out.println("Not Defeat Method to use BufferPool 1");
-                    file.writePage(page);
+                    // file.writePage(page);
+                    getWriteLock(tid, page.getId());
+                    int cnt = IncreaseCount();
+                    Buffer_Pool_RAM.put(page.getId(), page);
+                    NCache.insert(page.getId(), cnt);
+                    page.markDirty(true, tid);
                 }
             }
 
@@ -294,7 +480,8 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         // System.out.println("flushAll");
-        ++cnt;
+        // ++cnt;
+        int cnt = this.IncreaseCount();
         Iterator<PageId> iter;
         iter = NCache.PageIdVector().iterator();
         while (iter.hasNext()){
@@ -337,7 +524,8 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-        ++cnt;
+        // ++cnt;
+        int cnt = this.IncreaseCount();
         Page page = this.Buffer_Pool_RAM.get(pid);
         if (page == null) {
             throw new IOException("Pid Not Found");
@@ -365,14 +553,16 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         // TODO: Try to open the lock to writeback
-        ++cnt;
+        // ++cnt;
+        int cnt = this.IncreaseCount();
         Page page = this.Buffer_Pool_RAM.get(pid);
         if (page == null) {
             throw new IOException("Pid Not Found");
         }
         // DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         if (page.isDirty()==null){
-            // flushPage(pid);
+        // if (page.isDirty()==null&&LockPool.get(pid).tIds.size()==0){
+                // flushPage(pid);
             discardPage(pid);
         }else{
             NCache.remove(pid);
@@ -467,4 +657,149 @@ public class BufferPool {
         //     getid.clear();
         // }
     }
+
+    /**
+     * A very light-weighted Lock implementation</p>
+     * by Jiasen</p>
+     * The lock can upgrade</p>
+     * The same tid cannot lock twice. Once relock, do nothing. </p>
+     */
+    public class LockWithTransaction{
+        public boolean isWrite = false;
+        public HashSet<TransactionId> tIds = new HashSet<TransactionId>(4);
+        public Object modifying = new Object();
+        public Object getPageLock = new Object();
+        public PageId pid = null;
+        LockWithTransaction(PageId pid){
+            // Thread.currentThread()
+            this.pid = pid;
+        }
+        /**
+         * get the read lock </p>
+         * will wait until it locks </p>
+         * do nothing if it holds the write lock
+         * @param tid
+         */
+        public void readlock(TransactionId tid) throws TransactionAbortedException{
+            int counter = 0;
+            while (true){
+                synchronized(modifying){
+                    // The first read lock
+                    if (tIds.size()==0){
+                        tIds.add(tid);
+                        isWrite = false;
+                        Database.getBufferPool().waitForPage.remove(tid);
+                        return;
+                    }
+                    // Can add a read lock or hold initaially
+                    if (tIds.size()>0&&(!isWrite)){
+                        if (!tIds.contains(tid)){
+                            tIds.add(tid);
+                        }
+                        Database.getBufferPool().waitForPage.remove(tid);
+                        return;
+                    }
+                    // Holding a write lock
+                    if (isWrite&&tIds.contains(tid)){
+                        Database.getBufferPool().waitForPage.remove(tid);
+                        return;
+                    }
+                }
+                ++counter;
+                Database.getBufferPool().waitForPage.put(tid, pid);
+                Thread.yield();
+                if (check_cycle_from(tid)){
+                    throw new TransactionAbortedException();
+                }
+            }
+        }
+        /**
+         * Get the write lock </p>
+         * or Upgrade the lock to write lock
+         * @param tid
+         */
+        public void writelock(TransactionId tid)throws TransactionAbortedException{
+            int counter = 0;
+            while (true){
+                synchronized(modifying){
+                    // The first write lock
+                    if (tIds.size()==0){
+                        tIds.add(tid);
+                        isWrite = true;
+                        Database.getBufferPool().waitForPage.remove(tid);
+                        return;
+                    }
+                    // Upgrade lock or hold initially
+                    if (tIds.size()==1&&tIds.contains(tid)){
+                        isWrite = true;
+                        Database.getBufferPool().waitForPage.remove(tid);
+                        return;
+                    }
+                }
+                ++counter;
+                Database.getBufferPool().waitForPage.put(tid, pid);
+                Thread.yield();
+                if (check_cycle_from(tid)){
+                    throw new TransactionAbortedException();
+                }
+            }
+        }
+        /**
+         * Unlock. Whether it is r/w lock does not matter. 
+         * @param tid
+         */
+        public void unlock(TransactionId tid){
+            synchronized(modifying){
+                if (!tIds.contains(tid)){
+                    System.err.println("DO NOTHING WHEN UNLOCK by JIASEN");
+                    // throw new NotImplementedException();
+                }
+                tIds.remove(tid);
+            }
+        }
+        /**
+         * Unlock. Whether it is r/w lock does not matter. 
+         * @param tid
+         */
+        public void unlockread(TransactionId tid){
+            synchronized(modifying){
+                if (!this.isWrite) tIds.remove(tid);
+            }
+        }
+
+        public boolean holdsLock(TransactionId tid){
+            synchronized(modifying){
+                return tIds.contains(tid);
+            }
+        }
+        public boolean check_cycle(TransactionId tid,Vector<TransactionId> TIDs){
+            PageId pid;
+            pid = Database.getBufferPool().waitForPage.get(tid);
+            if (pid!=null){
+                LockWithTransaction lockWithTransaction =  Database.getBufferPool().LockPool.get(pid);
+                if (lockWithTransaction!=null){
+                    Vector<TransactionId> next = new Vector<>();
+                    synchronized(lockWithTransaction.modifying){
+                        for (Iterator<TransactionId> iter = lockWithTransaction.tIds.iterator();iter.hasNext();){
+                            next.add(iter.next());
+                        }
+                    }
+                    for (TransactionId nextTid: next){
+                        if (TIDs.contains(nextTid)){
+                            return true;
+                        } else {
+                            TIDs.add(nextTid);
+                            if (check_cycle(nextTid, TIDs)){
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        public boolean check_cycle_from(TransactionId tid){
+            return check_cycle(tid, new Vector<TransactionId>());
+        }
+    };
 }
